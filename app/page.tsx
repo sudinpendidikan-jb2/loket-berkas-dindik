@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { KEPERLUAN_OPTIONS } from "@/lib/constants";
 
 interface GuestResult {
@@ -22,6 +22,12 @@ export default function GuestFormPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GuestResult | null>(null);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   function update<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -148,6 +154,15 @@ export default function GuestFormPage() {
                   placeholder="Hal lain yang perlu diketahui petugas"
                 />
               </Field>
+
+              <Field label="Jam masuk">
+                <div className="input flex items-center justify-between bg-paper/60 text-ink/70">
+                  <span>
+                    {now.toLocaleString("id-ID", { dateStyle: "long", timeStyle: "medium" })}
+                  </span>
+                  <span className="text-xs text-ink/40">otomatis</span>
+                </div>
+              </Field>
             </div>
 
             {error && (
@@ -216,9 +231,9 @@ function MonasBackdrop() {
             <stop offset="55%" stopColor="#152443" />
             <stop offset="100%" stopColor="#1B2A4A" />
           </linearGradient>
-          <radialGradient id="glow" cx="50%" cy="38%" r="55%">
-            <stop offset="0%" stopColor="#D9AE6E" stopOpacity="0.35" />
-            <stop offset="60%" stopColor="#D9AE6E" stopOpacity="0.06" />
+          <radialGradient id="glow" cx="30%" cy="42%" r="45%">
+            <stop offset="0%" stopColor="#D9AE6E" stopOpacity="0.4" />
+            <stop offset="60%" stopColor="#D9AE6E" stopOpacity="0.08" />
             <stop offset="100%" stopColor="#D9AE6E" stopOpacity="0" />
           </radialGradient>
           <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
@@ -239,21 +254,21 @@ function MonasBackdrop() {
         ))}
 
         {/* siluet gedung kota, biar konteksnya Jakarta */}
-        <g fill="#0F1B36">
-          <rect x="60" y="600" width="60" height="200" />
-          <rect x="140" y="560" width="45" height="240" />
+        <g fill="#080E20">
+          <rect x="30" y="600" width="55" height="200" />
+          <rect x="440" y="560" width="45" height="240" />
           <rect x="960" y="580" width="50" height="220" />
           <rect x="1040" y="620" width="70" height="180" />
           <rect x="1000" y="540" width="35" height="260" />
         </g>
 
         {/* Monas: dasar, tugu, dan lidah api emas */}
-        <g fill="#0F1B36">
-          <rect x="520" y="700" width="160" height="30" rx="2" />
-          <rect x="540" y="660" width="120" height="42" />
-          <polygon points="565,660 635,660 615,300 585,300" />
+        <g fill="#080E20" stroke="#D9AE6E" strokeOpacity="0.35" strokeWidth="1.5">
+          <rect x="260" y="700" width="160" height="30" rx="2" />
+          <rect x="280" y="660" width="120" height="42" />
+          <polygon points="305,660 375,660 355,300 325,300" />
         </g>
-        <polygon points="588,300 612,300 605,255 595,255" fill="url(#flame)" />
+        <polygon points="328,300 352,300 345,255 335,255" fill="url(#flame)" />
       </svg>
     </div>
   );

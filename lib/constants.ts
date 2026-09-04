@@ -1,10 +1,10 @@
 export const KEPERLUAN_OPTIONS = [
-  "Pengajuan izin operasional sekolah",
-  "Pengambilan SK / surat keputusan",
-  "Legalisir ijazah",
-  "Data Dapodik / NISN",
-  "Pengajuan beasiswa",
-  "Konsultasi berkas",
+  "Mutasi masuk siswa",
+  "Mutasi keluar siswa",
+  "Legalisir dokumen",
+  "Pengambilan berkas",
+  "Pengaduan / keluhan",
+  "Konsultasi",
   "Lainnya",
 ];
 
