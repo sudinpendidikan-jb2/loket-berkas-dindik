@@ -137,7 +137,14 @@ export default function AdminDashboard() {
                   <td className="py-3 pr-4">{g.nama}</td>
                   <td className="py-3 pr-4 text-ink/70">{g.asal_instansi}</td>
                   <td className="py-3 pr-4 text-ink/70">{g.no_hp}</td>
-                  <td className="py-3 pr-4 text-ink/70">{g.keperluan}</td>
+                  <td className="py-3 pr-4 text-ink/70">
+                    {g.keperluan}
+                    {g.nama_siswa && (
+                      <div className="mt-1 text-xs text-ink/50">
+                        {g.nama_siswa} &middot; {g.sekolah_asal} &rarr; {g.sekolah_tujuan}
+                      </div>
+                    )}
+                  </td>
                   <td className="py-3 pr-4">
                     <select
                       value={g.status}

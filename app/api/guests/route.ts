@@ -6,6 +6,8 @@ function isAdmin() {
   return cookies().get("admin_session")?.value === "authorized";
 }
 
+const MUTASI_KEPERLUAN = ["Mutasi masuk siswa", "Mutasi keluar siswa"];
+
 export async function POST(req: NextRequest) {
   try {
     await ensureSchema();
@@ -21,11 +23,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (MUTASI_KEPERLUAN.includes(body.keperluan)) {
+      const requiredSiswa = ["nama_siswa", "sekolah_asal", "sekolah_tujuan"];
+      for (const field of requiredSiswa) {
+        if (!body[field] || String(body[field]).trim() === "") {
+          return NextResponse.json(
+            { error: `Kolom "${field}" wajib diisi untuk keperluan mutasi.` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     const guest = await insertGuest({
       nama: body.nama,
       asal_instansi: body.asal_instansi,
       no_hp: body.no_hp,
       keperluan: body.keperluan,
+      nama_siswa: body.nama_siswa,
+      sekolah_asal: body.sekolah_asal,
+      sekolah_tujuan: body.sekolah_tujuan,
       catatan: body.catatan,
     });
 

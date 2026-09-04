@@ -15,6 +15,9 @@ export interface Guest {
   asal_instansi: string;
   no_hp: string;
   keperluan: string;
+  nama_siswa: string | null;
+  sekolah_asal: string | null;
+  sekolah_tujuan: string | null;
   catatan: string | null;
   status: GuestStatus;
   created_at: string;
@@ -39,6 +42,11 @@ export async function ensureSchema() {
   await sql`ALTER TABLE guests DROP COLUMN IF EXISTS queue_number;`;
   await sql`ALTER TABLE guests DROP COLUMN IF EXISTS bidang_tujuan;`;
   await sql`ALTER TABLE guests DROP COLUMN IF EXISTS nama_petugas;`;
+
+  // Detail siswa, khusus untuk keperluan mutasi masuk/keluar.
+  await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS nama_siswa TEXT;`;
+  await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS sekolah_asal TEXT;`;
+  await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS sekolah_tujuan TEXT;`;
 }
 
 export async function insertGuest(input: {
@@ -46,15 +54,21 @@ export async function insertGuest(input: {
   asal_instansi: string;
   no_hp: string;
   keperluan: string;
+  nama_siswa?: string;
+  sekolah_asal?: string;
+  sekolah_tujuan?: string;
   catatan?: string;
 }): Promise<Guest> {
   const rows = await sql`
-    INSERT INTO guests (nama, asal_instansi, no_hp, keperluan, catatan)
+    INSERT INTO guests (nama, asal_instansi, no_hp, keperluan, nama_siswa, sekolah_asal, sekolah_tujuan, catatan)
     VALUES (
       ${input.nama},
       ${input.asal_instansi},
       ${input.no_hp},
       ${input.keperluan},
+      ${input.nama_siswa ?? null},
+      ${input.sekolah_asal ?? null},
+      ${input.sekolah_tujuan ?? null},
       ${input.catatan ?? null}
     )
     RETURNING *;

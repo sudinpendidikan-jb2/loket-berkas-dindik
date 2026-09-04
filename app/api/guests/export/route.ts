@@ -29,6 +29,9 @@ export async function GET(req: NextRequest) {
     "Asal Instansi",
     "No. HP",
     "Keperluan",
+    "Nama Siswa",
+    "Sekolah Asal",
+    "Sekolah Tujuan",
     "Status",
     "Catatan",
   ];
@@ -42,6 +45,9 @@ export async function GET(req: NextRequest) {
         g.asal_instansi,
         g.no_hp,
         g.keperluan,
+        g.nama_siswa ?? "",
+        g.sekolah_asal ?? "",
+        g.sekolah_tujuan ?? "",
         g.status,
         g.catatan ?? "",
       ]

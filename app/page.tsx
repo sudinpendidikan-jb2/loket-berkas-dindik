@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { KEPERLUAN_OPTIONS } from "@/lib/constants";
 
+const MUTASI_KEPERLUAN = ["Mutasi masuk siswa", "Mutasi keluar siswa"];
+
 interface GuestResult {
   nama: string;
   asal_instansi: string;
@@ -14,6 +16,9 @@ const initialForm = {
   asal_instansi: "",
   no_hp: "",
   keperluan: KEPERLUAN_OPTIONS[0],
+  nama_siswa: "",
+  sekolah_asal: "",
+  sekolah_tujuan: "",
   catatan: "",
 };
 
@@ -30,8 +35,18 @@ export default function GuestFormPage() {
   }, []);
 
   function update<K extends keyof typeof form>(key: K, value: string) {
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => {
+      const next = { ...f, [key]: value };
+      if (key === "keperluan" && !MUTASI_KEPERLUAN.includes(value)) {
+        next.nama_siswa = "";
+        next.sekolah_asal = "";
+        next.sekolah_tujuan = "";
+      }
+      return next;
+    });
   }
+
+  const isMutasi = MUTASI_KEPERLUAN.includes(form.keperluan);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -145,6 +160,46 @@ export default function GuestFormPage() {
                   ))}
                 </select>
               </Field>
+
+              {isMutasi && (
+                <div className="space-y-5 border-t border-dashed border-line pt-5">
+                  <p className="text-sm font-medium text-navy">
+                    Detail siswa <span className="font-normal text-ink/50">(khusus urusan mutasi)</span>
+                  </p>
+
+                  <Field label="Nama siswa yang diurus">
+                    <input
+                      required
+                      value={form.nama_siswa}
+                      onChange={(e) => update("nama_siswa", e.target.value)}
+                      className="input"
+                      placeholder="Nama siswa"
+                    />
+                  </Field>
+
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <Field label="Sekolah asal">
+                      <input
+                        required
+                        value={form.sekolah_asal}
+                        onChange={(e) => update("sekolah_asal", e.target.value)}
+                        className="input"
+                        placeholder="Sekolah asal siswa"
+                      />
+                    </Field>
+
+                    <Field label="Sekolah tujuan">
+                      <input
+                        required
+                        value={form.sekolah_tujuan}
+                        onChange={(e) => update("sekolah_tujuan", e.target.value)}
+                        className="input"
+                        placeholder="Sekolah tujuan siswa"
+                      />
+                    </Field>
+                  </div>
+                </div>
+              )}
 
               <Field label="Keterangan tambahan (opsional)">
                 <textarea
