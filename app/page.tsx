@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { BIDANG_OPTIONS, KEPERLUAN_OPTIONS } from "@/lib/constants";
+import { KEPERLUAN_OPTIONS } from "@/lib/constants";
 
-interface TicketResult {
-  queue_number: string;
+interface GuestResult {
   nama: string;
-  bidang_tujuan: string;
+  asal_instansi: string;
   created_at: string;
 }
 
@@ -15,8 +14,6 @@ const initialForm = {
   asal_instansi: "",
   no_hp: "",
   keperluan: KEPERLUAN_OPTIONS[0],
-  bidang_tujuan: BIDANG_OPTIONS[0],
-  nama_petugas: "",
   catatan: "",
 };
 
@@ -24,7 +21,7 @@ export default function GuestFormPage() {
   const [form, setForm] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ticket, setTicket] = useState<TicketResult | null>(null);
+  const [result, setResult] = useState<GuestResult | null>(null);
 
   function update<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -48,7 +45,7 @@ export default function GuestFormPage() {
         return;
       }
 
-      setTicket(data.guest);
+      setResult(data.guest);
     } catch {
       setError("Tidak bisa terhubung ke server. Periksa koneksi internet.");
     } finally {
@@ -56,137 +53,116 @@ export default function GuestFormPage() {
     }
   }
 
-  if (ticket) {
-    return <TicketView ticket={ticket} onReset={() => { setTicket(null); setForm(initialForm); }} />;
+  if (result) {
+    return (
+      <ConfirmationView
+        result={result}
+        onReset={() => {
+          setResult(null);
+          setForm(initialForm);
+        }}
+      />
+    );
   }
 
   return (
-    <main className="min-h-screen bg-paper">
-      <header className="bg-navy text-paper">
-        <div className="mx-auto max-w-5xl px-6 py-5 flex items-center gap-3">
+    <main className="relative min-h-screen overflow-hidden bg-[#0E1830]">
+      <MonasBackdrop />
+
+      <div className="relative z-10 mx-auto max-w-5xl px-6 py-12 md:py-16">
+        <header className="flex items-center gap-3 text-paper">
           <StampMark />
           <div>
             <p className="font-serif text-lg leading-tight">Dinas Pendidikan</p>
-            <p className="text-sm text-paper/70 leading-tight">Loket Layanan Berkas</p>
+            <p className="text-sm text-paper/60 leading-tight">Buku Tamu Digital</p>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="mx-auto max-w-5xl px-6 py-12 grid gap-12 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-        <div className="md:pt-2">
-          <h1 className="font-serif text-4xl leading-tight text-navy">
-            Ambil nomor antrian sebelum ke loket.
-          </h1>
-          <p className="mt-4 text-ink/80 leading-relaxed max-w-sm">
-            Isi data di samping untuk mencatat kunjungan Anda. Setelah selesai,
-            Anda akan mendapat nomor antrian — tunjukkan ke petugas saat dipanggil.
-          </p>
-
-          <dl className="mt-10 space-y-4 max-w-sm">
-            <div className="flex gap-3 border-t border-line pt-4">
-              <dt className="font-serif text-navy w-8 shrink-0">1</dt>
-              <dd className="text-ink/80 text-sm leading-relaxed">Isi formulir dengan data yang sesuai KTP / surat tugas.</dd>
-            </div>
-            <div className="flex gap-3 border-t border-line pt-4">
-              <dt className="font-serif text-navy w-8 shrink-0">2</dt>
-              <dd className="text-ink/80 text-sm leading-relaxed">Simpan atau tunjukkan nomor antrian dari layar ini.</dd>
-            </div>
-            <div className="flex gap-3 border-t border-line pt-4 border-b pb-4">
-              <dt className="font-serif text-navy w-8 shrink-0">3</dt>
-              <dd className="text-ink/80 text-sm leading-relaxed">Tunggu nomor Anda dipanggil oleh petugas bidang terkait.</dd>
-            </div>
-          </dl>
-        </div>
-
-        <form onSubmit={handleSubmit} className="bg-white border border-line rounded p-6 sm:p-8">
-          <p className="font-serif text-xl text-navy mb-6">Data Kunjungan</p>
-
-          <div className="space-y-5">
-            <Field label="Nama lengkap">
-              <input
-                required
-                value={form.nama}
-                onChange={(e) => update("nama", e.target.value)}
-                className="input"
-                placeholder="Sesuai KTP"
-              />
-            </Field>
-
-            <Field label="Asal instansi / sekolah">
-              <input
-                required
-                value={form.asal_instansi}
-                onChange={(e) => update("asal_instansi", e.target.value)}
-                className="input"
-                placeholder="Contoh: SDN 02 Menteng"
-              />
-            </Field>
-
-            <Field label="Nomor HP / WhatsApp">
-              <input
-                required
-                value={form.no_hp}
-                onChange={(e) => update("no_hp", e.target.value)}
-                className="input"
-                placeholder="08xxxxxxxxxx"
-                type="tel"
-              />
-            </Field>
-
-            <Field label="Keperluan">
-              <select
-                value={form.keperluan}
-                onChange={(e) => update("keperluan", e.target.value)}
-                className="input"
-              >
-                {KEPERLUAN_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="Bidang yang dituju">
-              <select
-                value={form.bidang_tujuan}
-                onChange={(e) => update("bidang_tujuan", e.target.value)}
-                className="input"
-              >
-                {BIDANG_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="Nama petugas yang dituju (opsional)">
-              <input
-                value={form.nama_petugas}
-                onChange={(e) => update("nama_petugas", e.target.value)}
-                className="input"
-              />
-            </Field>
-
-            <Field label="Catatan (opsional)">
-              <textarea
-                value={form.catatan}
-                onChange={(e) => update("catatan", e.target.value)}
-                className="input min-h-20 resize-none"
-                placeholder="Detail berkas atau keperluan tambahan"
-              />
-            </Field>
+        <div className="mt-14 grid gap-10 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:mt-20">
+          <div className="text-paper md:pt-4">
+            <p className="text-sm tracking-wide text-gold-light/90">Selamat datang</p>
+            <h1 className="mt-2 font-serif text-4xl leading-tight md:text-[2.75rem]">
+              Silakan catat kunjungan Anda.
+            </h1>
+            <p className="mt-4 max-w-sm leading-relaxed text-paper/70">
+              Isi data di samping sebelum menunggu dipanggil petugas. Waktu
+              kedatangan Anda tercatat otomatis begitu formulir dikirim.
+            </p>
           </div>
 
-          {error && (
-            <p className="mt-4 text-sm text-rust border-l-2 border-rust pl-3">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="mt-8 w-full bg-navy text-paper font-medium py-3 rounded hover:bg-navy-light transition-colors disabled:opacity-60"
+          <form
+            onSubmit={handleSubmit}
+            className="rounded-lg border border-gold-light/20 bg-white/95 p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur sm:p-8"
           >
-            {submitting ? "Menyimpan..." : "Ambil nomor antrian"}
-          </button>
-        </form>
+            <p className="mb-6 font-serif text-xl text-navy">Data Kunjungan</p>
+
+            <div className="space-y-5">
+              <Field label="Nama lengkap">
+                <input
+                  required
+                  value={form.nama}
+                  onChange={(e) => update("nama", e.target.value)}
+                  className="input"
+                  placeholder="Sesuai KTP"
+                />
+              </Field>
+
+              <Field label="Nomor HP / WhatsApp">
+                <input
+                  required
+                  value={form.no_hp}
+                  onChange={(e) => update("no_hp", e.target.value)}
+                  className="input"
+                  placeholder="08xxxxxxxxxx"
+                  type="tel"
+                />
+              </Field>
+
+              <Field label="Asal instansi / sekolah">
+                <input
+                  required
+                  value={form.asal_instansi}
+                  onChange={(e) => update("asal_instansi", e.target.value)}
+                  className="input"
+                  placeholder="Contoh: SDN 02 Menteng"
+                />
+              </Field>
+
+              <Field label="Keperluan kunjungan">
+                <select
+                  value={form.keperluan}
+                  onChange={(e) => update("keperluan", e.target.value)}
+                  className="input"
+                >
+                  {KEPERLUAN_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Keterangan tambahan (opsional)">
+                <textarea
+                  value={form.catatan}
+                  onChange={(e) => update("catatan", e.target.value)}
+                  className="input min-h-20 resize-none"
+                  placeholder="Hal lain yang perlu diketahui petugas"
+                />
+              </Field>
+            </div>
+
+            {error && (
+              <p className="mt-4 border-l-2 border-rust pl-3 text-sm text-rust">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="mt-8 w-full rounded bg-navy py-3 font-medium text-paper transition-colors hover:bg-navy-light disabled:opacity-60"
+            >
+              {submitting ? "Menyimpan..." : "Kirim data kunjungan"}
+            </button>
+          </form>
+        </div>
       </div>
 
       <style jsx global>{`
@@ -209,7 +185,7 @@ export default function GuestFormPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-sm text-ink/70 mb-1.5">{label}</span>
+      <span className="mb-1.5 block text-sm text-ink/70">{label}</span>
       {children}
     </label>
   );
@@ -224,35 +200,95 @@ function StampMark() {
   );
 }
 
-function TicketView({ ticket, onReset }: { ticket: TicketResult; onReset: () => void }) {
-  const time = new Date(ticket.created_at).toLocaleString("id-ID", {
+/** Latar siluet Monas dengan langit senja navy-emas — dibuat sebagai SVG asli, bukan foto. */
+function MonasBackdrop() {
+  return (
+    <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+      <svg
+        className="absolute inset-0 h-full w-full"
+        viewBox="0 0 1200 800"
+        preserveAspectRatio="xMidYMax slice"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#0A1226" />
+            <stop offset="55%" stopColor="#152443" />
+            <stop offset="100%" stopColor="#1B2A4A" />
+          </linearGradient>
+          <radialGradient id="glow" cx="50%" cy="38%" r="55%">
+            <stop offset="0%" stopColor="#D9AE6E" stopOpacity="0.35" />
+            <stop offset="60%" stopColor="#D9AE6E" stopOpacity="0.06" />
+            <stop offset="100%" stopColor="#D9AE6E" stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#F1D28E" />
+            <stop offset="100%" stopColor="#B8863A" />
+          </linearGradient>
+        </defs>
+
+        <rect width="1200" height="800" fill="url(#sky)" />
+        <rect width="1200" height="800" fill="url(#glow)" />
+
+        {/* bintang */}
+        {[
+          [120, 90], [260, 150], [340, 60], [520, 110], [700, 70],
+          [860, 140], [980, 90], [1080, 180], [180, 220], [980, 240],
+        ].map(([cx, cy], i) => (
+          <circle key={i} cx={cx} cy={cy} r={i % 3 === 0 ? 1.6 : 1} fill="#F4F1EA" opacity="0.55" />
+        ))}
+
+        {/* siluet gedung kota, biar konteksnya Jakarta */}
+        <g fill="#0F1B36">
+          <rect x="60" y="600" width="60" height="200" />
+          <rect x="140" y="560" width="45" height="240" />
+          <rect x="960" y="580" width="50" height="220" />
+          <rect x="1040" y="620" width="70" height="180" />
+          <rect x="1000" y="540" width="35" height="260" />
+        </g>
+
+        {/* Monas: dasar, tugu, dan lidah api emas */}
+        <g fill="#0F1B36">
+          <rect x="520" y="700" width="160" height="30" rx="2" />
+          <rect x="540" y="660" width="120" height="42" />
+          <polygon points="565,660 635,660 615,300 585,300" />
+        </g>
+        <polygon points="588,300 612,300 605,255 595,255" fill="url(#flame)" />
+      </svg>
+    </div>
+  );
+}
+
+function ConfirmationView({ result, onReset }: { result: GuestResult; onReset: () => void }) {
+  const time = new Date(result.created_at).toLocaleString("id-ID", {
     dateStyle: "full",
     timeStyle: "short",
   });
 
   return (
-    <main className="min-h-screen bg-paper flex items-center justify-center px-6 py-16">
-      <div className="w-full max-w-sm">
-        <div className="bg-navy text-paper rounded overflow-hidden">
-          <div className="px-8 pt-8 pb-6 text-center">
-            <p className="text-sm text-paper/70">Nomor Antrian Anda</p>
-            <p className="font-serif text-7xl mt-2 tracking-tight">{ticket.queue_number}</p>
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0E1830] px-6 py-16">
+      <MonasBackdrop />
+
+      <div className="relative z-10 w-full max-w-sm">
+        <div className="overflow-hidden rounded-lg border border-gold-light/20 bg-navy/90 text-paper shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur">
+          <div className="px-8 pb-6 pt-8 text-center">
+            <p className="text-sm text-paper/70">Terima kasih, kunjungan Anda tercatat</p>
+            <p className="mt-2 font-serif text-2xl leading-snug">{result.nama}</p>
           </div>
-          <div className="border-t border-dashed border-gold-light/50 mx-8" />
-          <div className="px-8 py-6 text-sm space-y-2">
-            <Row label="Nama" value={ticket.nama} />
-            <Row label="Bidang tujuan" value={ticket.bidang_tujuan} />
-            <Row label="Waktu" value={time} />
+          <div className="mx-8 border-t border-dashed border-gold-light/40" />
+          <div className="space-y-2 px-8 py-6 text-sm">
+            <Row label="Instansi" value={result.asal_instansi} />
+            <Row label="Jam masuk" value={time} />
           </div>
         </div>
 
-        <p className="mt-6 text-center text-ink/70 text-sm leading-relaxed">
-          Simpan halaman ini dan tunggu nomor Anda dipanggil petugas.
+        <p className="mt-6 text-center text-sm leading-relaxed text-paper/70">
+          Silakan tunggu di area loket sampai nama Anda dipanggil petugas.
         </p>
 
         <button
           onClick={onReset}
-          className="mt-6 w-full border border-navy text-navy font-medium py-3 rounded hover:bg-navy hover:text-paper transition-colors"
+          className="mt-6 w-full rounded border border-paper/40 py-3 font-medium text-paper transition-colors hover:bg-paper hover:text-navy"
         >
           Catat kunjungan lain
         </button>

@@ -93,7 +93,7 @@ export default function AdminDashboard() {
           </label>
 
           <label className="text-sm flex-1 min-w-40">
-            <span className="block text-ink/60 mb-1">Cari nama / instansi / no. antrian</span>
+            <span className="block text-ink/60 mb-1">Cari nama / instansi</span>
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -114,32 +114,30 @@ export default function AdminDashboard() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="text-left text-ink/60 border-b border-line">
-                <th className="py-2 pr-4 font-medium">No.</th>
-                <th className="py-2 pr-4 font-medium">Waktu</th>
+                <th className="py-2 pr-4 font-medium">Jam Masuk</th>
                 <th className="py-2 pr-4 font-medium">Nama</th>
                 <th className="py-2 pr-4 font-medium">Instansi</th>
+                <th className="py-2 pr-4 font-medium">No. HP</th>
                 <th className="py-2 pr-4 font-medium">Keperluan</th>
-                <th className="py-2 pr-4 font-medium">Bidang</th>
                 <th className="py-2 pr-4 font-medium">Status</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={7} className="py-8 text-center text-ink/50">Memuat data...</td></tr>
+                <tr><td colSpan={6} className="py-8 text-center text-ink/50">Memuat data...</td></tr>
               )}
               {!loading && guests.length === 0 && (
-                <tr><td colSpan={7} className="py-8 text-center text-ink/50">Belum ada tamu pada filter ini.</td></tr>
+                <tr><td colSpan={6} className="py-8 text-center text-ink/50">Belum ada tamu pada filter ini.</td></tr>
               )}
               {!loading && guests.map((g) => (
                 <tr key={g.id} className="border-b border-line/70 align-top">
-                  <td className="py-3 pr-4 font-serif text-navy">{g.queue_number}</td>
                   <td className="py-3 pr-4 text-ink/70 whitespace-nowrap">
                     {new Date(g.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
                   </td>
                   <td className="py-3 pr-4">{g.nama}</td>
                   <td className="py-3 pr-4 text-ink/70">{g.asal_instansi}</td>
+                  <td className="py-3 pr-4 text-ink/70">{g.no_hp}</td>
                   <td className="py-3 pr-4 text-ink/70">{g.keperluan}</td>
-                  <td className="py-3 pr-4 text-ink/70">{g.bidang_tujuan}</td>
                   <td className="py-3 pr-4">
                     <select
                       value={g.status}

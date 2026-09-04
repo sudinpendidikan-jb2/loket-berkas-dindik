@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     await ensureSchema();
     const body = await req.json();
 
-    const required = ["nama", "asal_instansi", "no_hp", "keperluan", "bidang_tujuan"];
+    const required = ["nama", "asal_instansi", "no_hp", "keperluan"];
     for (const field of required) {
       if (!body[field] || String(body[field]).trim() === "") {
         return NextResponse.json(
@@ -26,8 +26,6 @@ export async function POST(req: NextRequest) {
       asal_instansi: body.asal_instansi,
       no_hp: body.no_hp,
       keperluan: body.keperluan,
-      bidang_tujuan: body.bidang_tujuan,
-      nama_petugas: body.nama_petugas,
       catatan: body.catatan,
     });
 

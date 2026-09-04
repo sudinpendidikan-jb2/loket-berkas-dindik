@@ -11,13 +11,10 @@ export type GuestStatus = "menunggu" | "diproses" | "selesai";
 
 export interface Guest {
   id: number;
-  queue_number: string;
   nama: string;
   asal_instansi: string;
   no_hp: string;
   keperluan: string;
-  bidang_tujuan: string;
-  nama_petugas: string | null;
   catatan: string | null;
   status: GuestStatus;
   created_at: string;
@@ -27,40 +24,21 @@ export async function ensureSchema() {
   await sql`
     CREATE TABLE IF NOT EXISTS guests (
       id SERIAL PRIMARY KEY,
-      queue_number TEXT NOT NULL,
       nama TEXT NOT NULL,
       asal_instansi TEXT NOT NULL,
       no_hp TEXT NOT NULL,
       keperluan TEXT NOT NULL,
-      bidang_tujuan TEXT NOT NULL,
-      nama_petugas TEXT,
       catatan TEXT,
       status TEXT NOT NULL DEFAULT 'menunggu',
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
-}
 
-const BIDANG_PREFIX: Record<string, string> = {
-  Sekretariat: "S",
-  "PAUD dan Dikdas": "D",
-  "Pendidikan Menengah": "M",
-  "Guru dan Tenaga Kependidikan": "G",
-  Kebudayaan: "K",
-  Lainnya: "L",
-};
-
-export async function nextQueueNumber(bidangTujuan: string): Promise<string> {
-  const prefix = BIDANG_PREFIX[bidangTujuan] ?? "U";
-  const rows = await sql`
-    SELECT COUNT(*)::int AS count
-    FROM guests
-    WHERE created_at::date = CURRENT_DATE
-      AND bidang_tujuan = ${bidangTujuan};
-  `;
-  const count = rows[0]?.count ?? 0;
-  const nextNumber = String(count + 1).padStart(3, "0");
-  return `${prefix}-${nextNumber}`;
+  // Migrasi dari skema versi lama: nomor antrian, bidang tujuan, dan nama
+  // petugas tidak dipakai lagi. Aman dijalankan berulang kali.
+  await sql`ALTER TABLE guests DROP COLUMN IF EXISTS queue_number;`;
+  await sql`ALTER TABLE guests DROP COLUMN IF EXISTS bidang_tujuan;`;
+  await sql`ALTER TABLE guests DROP COLUMN IF EXISTS nama_petugas;`;
 }
 
 export async function insertGuest(input: {
@@ -68,21 +46,15 @@ export async function insertGuest(input: {
   asal_instansi: string;
   no_hp: string;
   keperluan: string;
-  bidang_tujuan: string;
-  nama_petugas?: string;
   catatan?: string;
 }): Promise<Guest> {
-  const queueNumber = await nextQueueNumber(input.bidang_tujuan);
   const rows = await sql`
-    INSERT INTO guests (queue_number, nama, asal_instansi, no_hp, keperluan, bidang_tujuan, nama_petugas, catatan)
+    INSERT INTO guests (nama, asal_instansi, no_hp, keperluan, catatan)
     VALUES (
-      ${queueNumber},
       ${input.nama},
       ${input.asal_instansi},
       ${input.no_hp},
       ${input.keperluan},
-      ${input.bidang_tujuan},
-      ${input.nama_petugas ?? null},
       ${input.catatan ?? null}
     )
     RETURNING *;
@@ -106,7 +78,6 @@ export async function listGuests(filters: {
         ${q ?? null}::text IS NULL
         OR nama ILIKE '%' || ${q ?? null}::text || '%'
         OR asal_instansi ILIKE '%' || ${q ?? null}::text || '%'
-        OR queue_number ILIKE '%' || ${q ?? null}::text || '%'
       )
     ORDER BY created_at DESC;
   `;

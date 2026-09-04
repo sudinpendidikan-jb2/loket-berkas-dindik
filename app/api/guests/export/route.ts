@@ -24,14 +24,11 @@ export async function GET(req: NextRequest) {
   const guests = await listGuests({ date });
 
   const header = [
-    "No. Antrian",
-    "Waktu",
+    "Jam Masuk",
     "Nama",
     "Asal Instansi",
     "No. HP",
     "Keperluan",
-    "Bidang Tujuan",
-    "Petugas",
     "Status",
     "Catatan",
   ];
@@ -40,14 +37,11 @@ export async function GET(req: NextRequest) {
   for (const g of guests) {
     lines.push(
       [
-        g.queue_number,
         new Date(g.created_at).toLocaleString("id-ID"),
         g.nama,
         g.asal_instansi,
         g.no_hp,
         g.keperluan,
-        g.bidang_tujuan,
-        g.nama_petugas ?? "",
         g.status,
         g.catatan ?? "",
       ]
