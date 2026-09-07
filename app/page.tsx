@@ -16,7 +16,7 @@ const initialForm = {
   nama: "",
   asal_instansi: INSTANSI_OPTIONS[0],
   no_hp: "",
-  keperluan: KEPERLUAN_OPTIONS[0],
+  keperluan: "Lainnya",
   nama_siswa: "",
   sekolah_asal: "",
   sekolah_tujuan: "",
