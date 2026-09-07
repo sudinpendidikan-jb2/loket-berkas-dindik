@@ -18,9 +18,9 @@ export function AgencyLogos({
   const sizeClass =
     size === "lg" ? "h-10 w-auto md:h-12" : "h-8 w-auto md:h-9";
   const logos = [
-    { src: "/logos/jaya-raya.png", alt: "Logo Pemerintah Provinsi DKI Jakarta", w: 132, h: 167 },
-    { src: "/logos/disdik.png", alt: "Logo Dinas Pendidikan DKI Jakarta", w: 140, h: 167 },
-    { src: "/logos/jakarta-barat.png", alt: "Logo Kota Administrasi Jakarta Barat", w: 141, h: 167 },
+    { src: "/logos/jaya-raya.png", alt: "Logo Pemerintah Provinsi DKI Jakarta", w: 538, h: 668 },
+    { src: "/logos/disdik.png", alt: "Logo Dinas Pendidikan DKI Jakarta", w: 532, h: 668 },
+    { src: "/logos/jakarta-barat.png", alt: "Logo Kota Administrasi Jakarta Barat", w: 582, h: 668 },
   ];
   return (
     <div className={`flex flex-shrink-0 items-center gap-2 sm:gap-3 ${className}`}>
@@ -129,8 +129,8 @@ export function PrintLetterhead({
         <Image
           src="/logos/jaya-raya.png"
           alt="Logo Pemerintah Provinsi DKI Jakarta"
-          width={132}
-          height={167}
+          width={538}
+          height={668}
           className="h-16 w-auto shrink-0"
         />
         <div className="flex-1 text-center leading-tight text-black">
@@ -152,8 +152,8 @@ export function PrintLetterhead({
         <Image
           src="/logos/disdik.png"
           alt="Logo Dinas Pendidikan DKI Jakarta"
-          width={140}
-          height={167}
+          width={532}
+          height={668}
           className="h-16 w-auto shrink-0"
         />
       </div>
