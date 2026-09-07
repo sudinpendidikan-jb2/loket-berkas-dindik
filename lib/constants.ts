@@ -8,6 +8,15 @@ export const KEPERLUAN_OPTIONS = [
   "Lainnya",
 ];
 
+export const INSTANSI_OPTIONS = [
+  "PAUD",
+  "SD",
+  "SMP",
+  "SMA",
+  "SMK",
+  "Lainnya",
+];
+
 export const STATUS_LABEL: Record<string, string> = {
   menunggu: "Menunggu",
   diproses: "Diproses",

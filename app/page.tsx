@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KEPERLUAN_OPTIONS } from "@/lib/constants";
+import { KEPERLUAN_OPTIONS, INSTANSI_OPTIONS } from "@/lib/constants";
 import { MonasBackdrop, AgencyLogos } from "@/components/brand";
 
 const MUTASI_KEPERLUAN = ["Mutasi masuk siswa", "Mutasi keluar siswa"];
@@ -14,7 +14,7 @@ interface GuestResult {
 
 const initialForm = {
   nama: "",
-  asal_instansi: "",
+  asal_instansi: INSTANSI_OPTIONS[0],
   no_hp: "",
   keperluan: KEPERLUAN_OPTIONS[0],
   nama_siswa: "",
@@ -107,10 +107,10 @@ export default function GuestFormPage() {
           </h1>
         </header>
 
-        <div className="mt-14 grid gap-10 md:mt-20 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:justify-items-end">
+        <div className="mt-14 flex justify-center md:mt-20">
           <form
             onSubmit={handleSubmit}
-            className="w-full rounded-lg border border-gold-light/20 bg-white/95 p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur sm:p-8 md:col-start-2 md:max-w-md"
+            className="w-full rounded-lg border border-gold-light/20 bg-white/95 p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur sm:p-8 md:max-w-md"
           >
             <p className="mb-6 font-serif text-xl text-navy">Data Kunjungan</p>
 
@@ -136,14 +136,16 @@ export default function GuestFormPage() {
                 />
               </Field>
 
-              <Field label="Asal instansi / sekolah">
-                <input
-                  required
+              <Field label="Instansi">
+                <select
                   value={form.asal_instansi}
                   onChange={(e) => update("asal_instansi", e.target.value)}
                   className="input"
-                  placeholder="Contoh: SDN 02 Menteng"
-                />
+                >
+                  {INSTANSI_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
               </Field>
 
               <Field label="Keperluan kunjungan">
