@@ -102,7 +102,7 @@ export default function GuestFormPage() {
             </div>
           </div>
 
-          <h1 className="font-serif text-lg leading-snug sm:text-xl md:max-w-sm md:text-right">
+          <h1 className="font-serif text-lg leading-snug text-center sm:text-xl md:max-w-sm">
             Daftar Kunjungan Tamu Suku Dinas Pendidikan Wilayah II Kota Administrasi Jakarta Barat
           </h1>
         </header>
