@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { listGuests } from "@/lib/db";
-
-function isAdmin() {
-  return cookies().get("admin_session")?.value === "authorized";
-}
+import { getSession } from "@/lib/auth";
 
 function csvEscape(value: string) {
   if (value.includes(",") || value.includes('"') || value.includes("\n")) {
@@ -14,7 +10,7 @@ function csvEscape(value: string) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isAdmin()) {
+  if (!getSession()) {
     return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401 });
   }
 

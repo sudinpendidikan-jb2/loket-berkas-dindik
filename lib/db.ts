@@ -20,6 +20,17 @@ export interface Guest {
   sekolah_tujuan: string | null;
   catatan: string | null;
   status: GuestStatus;
+  status_updated_by: string | null;
+  status_updated_at: string | null;
+  created_at: string;
+}
+
+export interface Admin {
+  id: number;
+  username: string;
+  password_hash: string;
+  nama: string;
+  initials: string;
   created_at: string;
 }
 
@@ -47,6 +58,21 @@ export async function ensureSchema() {
   await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS nama_siswa TEXT;`;
   await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS sekolah_asal TEXT;`;
   await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS sekolah_tujuan TEXT;`;
+
+  // Jejak siapa & kapan terakhir mengubah status tamu ("Keluar ... oleh ...").
+  await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS status_updated_by TEXT;`;
+  await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMPTZ;`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS admins (
+      id SERIAL PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      nama TEXT NOT NULL,
+      initials TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `;
 }
 
 export async function insertGuest(input: {
@@ -92,15 +118,25 @@ export async function listGuests(filters: {
         ${q ?? null}::text IS NULL
         OR nama ILIKE '%' || ${q ?? null}::text || '%'
         OR asal_instansi ILIKE '%' || ${q ?? null}::text || '%'
+        OR nama_siswa ILIKE '%' || ${q ?? null}::text || '%'
+        OR sekolah_asal ILIKE '%' || ${q ?? null}::text || '%'
+        OR sekolah_tujuan ILIKE '%' || ${q ?? null}::text || '%'
       )
     ORDER BY created_at DESC;
   `;
   return rows as unknown as Guest[];
 }
 
-export async function updateGuestStatus(id: number, status: GuestStatus): Promise<Guest | null> {
+export async function updateGuestStatus(
+  id: number,
+  status: GuestStatus,
+  updatedBy: string
+): Promise<Guest | null> {
   const rows = await sql`
-    UPDATE guests SET status = ${status} WHERE id = ${id} RETURNING *;
+    UPDATE guests
+    SET status = ${status}, status_updated_by = ${updatedBy}, status_updated_at = now()
+    WHERE id = ${id}
+    RETURNING *;
   `;
   return (rows[0] as unknown as Guest) ?? null;
 }
@@ -108,4 +144,28 @@ export async function updateGuestStatus(id: number, status: GuestStatus): Promis
 export async function getGuestById(id: number): Promise<Guest | null> {
   const rows = await sql`SELECT * FROM guests WHERE id = ${id};`;
   return (rows[0] as unknown as Guest) ?? null;
+}
+
+export async function countAdmins(): Promise<number> {
+  const rows = await sql`SELECT COUNT(*)::int AS count FROM admins;`;
+  return rows[0]?.count ?? 0;
+}
+
+export async function getAdminByUsername(username: string): Promise<Admin | null> {
+  const rows = await sql`SELECT * FROM admins WHERE username = ${username};`;
+  return (rows[0] as unknown as Admin) ?? null;
+}
+
+export async function createAdmin(input: {
+  username: string;
+  password_hash: string;
+  nama: string;
+  initials: string;
+}): Promise<Admin> {
+  const rows = await sql`
+    INSERT INTO admins (username, password_hash, nama, initials)
+    VALUES (${input.username}, ${input.password_hash}, ${input.nama}, ${input.initials})
+    RETURNING *;
+  `;
+  return rows[0] as unknown as Admin;
 }

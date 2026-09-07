@@ -2,11 +2,23 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { STATUS_LABEL } from "@/lib/constants";
+import { STATUS_LABEL, KEPERLUAN_OPTIONS } from "@/lib/constants";
 import type { Guest, GuestStatus } from "@/lib/db";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
+}
+
+const BADGE_PALETTE = [
+  "bg-rust/10 text-rust",
+  "bg-gold/15 text-gold-dark",
+  "bg-moss/10 text-moss",
+  "bg-navy/10 text-navy",
+];
+
+function badgeClass(keperluan: string) {
+  const idx = KEPERLUAN_OPTIONS.indexOf(keperluan);
+  return BADGE_PALETTE[(idx < 0 ? 0 : idx) % BADGE_PALETTE.length];
 }
 
 export default function AdminDashboard() {
@@ -16,6 +28,21 @@ export default function AdminDashboard() {
   const [date, setDate] = useState(todayStr());
   const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
+  const [me, setMe] = useState<{ nama: string; initials: string } | null>(null);
+  const [now, setNow] = useState(() => new Date());
+  const [showAddPetugas, setShowAddPetugas] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000 * 30);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/admin/me")
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => setMe(data))
+      .catch(() => router.push("/admin"));
+  }, [router]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -40,11 +67,15 @@ export default function AdminDashboard() {
 
   async function updateStatus(id: number, newStatus: GuestStatus) {
     setGuests((gs) => gs.map((g) => (g.id === id ? { ...g, status: newStatus } : g)));
-    await fetch(`/api/guests/${id}`, {
+    const res = await fetch(`/api/guests/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     });
+    const data = await res.json();
+    if (data.guest) {
+      setGuests((gs) => gs.map((g) => (g.id === id ? data.guest : g)));
+    }
   }
 
   async function logout() {
@@ -52,122 +83,267 @@ export default function AdminDashboard() {
     router.push("/admin");
   }
 
+  const isToday = date === todayStr();
+  const total = guests.length;
+  const sedangDilayani = guests.filter((g) => g.status === "diproses").length;
+  const selesaiDilayani = guests.filter((g) => g.status === "selesai").length;
+
   return (
     <main className="min-h-screen bg-paper">
-      <header className="bg-navy text-paper">
-        <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between">
-          <div>
-            <p className="font-serif text-lg leading-tight">Buku Register Tamu</p>
-            <p className="text-sm text-paper/70 leading-tight">Dinas Pendidikan — Loket Layanan Berkas</p>
+      <div className="mx-auto max-w-5xl px-6 py-8 print:py-4">
+        <header className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-navy pb-6">
+          <div className="flex items-center gap-3">
+            <StampMark />
+            <div>
+              <p className="font-serif text-2xl leading-tight text-navy">Buku Tamu Sudin Pendidikan</p>
+              <p className="text-sm text-ink/60 leading-tight">Dasbor petugas — pemantauan kehadiran tamu</p>
+            </div>
           </div>
-          <button onClick={logout} className="text-sm border border-paper/40 rounded px-3 py-1.5 hover:bg-navy-light transition-colors">
-            Keluar
-          </button>
+
+          <div className="text-right text-sm print:hidden">
+            <p className="font-serif text-navy">
+              {now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            </p>
+            <p className="text-lg font-medium text-gold-dark">
+              {now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+            {me && (
+              <p className="mt-1 text-ink/60">
+                Login: <span className="font-medium text-ink">{me.nama.toUpperCase()}</span>{" "}
+                &middot;{" "}
+                <button onClick={() => setShowAddPetugas((v) => !v)} className="underline hover:text-navy">
+                  Tambah petugas
+                </button>{" "}
+                &middot;{" "}
+                <button onClick={logout} className="underline hover:text-navy">
+                  Keluar
+                </button>
+              </p>
+            )}
+          </div>
+        </header>
+
+        {showAddPetugas && (
+          <div className="print:hidden">
+            <AddPetugasForm onDone={() => setShowAddPetugas(false)} />
+          </div>
+        )}
+
+        <div className="mt-6 grid grid-cols-3 divide-x divide-line border border-line print:hidden">
+          <StatCard value={total} label={isToday ? "Tamu hari ini" : "Tamu pada tanggal ini"} />
+          <StatCard value={sedangDilayani} label="Sedang dilayani" />
+          <StatCard value={selesaiDilayani} label="Selesai dilayani" />
         </div>
-      </header>
 
-      <div className="mx-auto max-w-6xl px-6 py-8">
-        <div className="flex flex-wrap items-end gap-4 pb-6 border-b border-line">
-          <label className="text-sm">
-            <span className="block text-ink/60 mb-1">Tanggal</span>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="border border-line rounded px-2.5 py-1.5"
-            />
-          </label>
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+          <p className="font-serif text-lg text-navy">Daftar Kehadiran</p>
+          <p className="text-sm text-ink/50">
+            {total} entri — {isToday ? "hari ini" : new Date(date).toLocaleDateString("id-ID", { dateStyle: "medium" })}
+          </p>
+        </div>
 
-          <label className="text-sm">
-            <span className="block text-ink/60 mb-1">Status</span>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="border border-line rounded px-2.5 py-1.5"
-            >
-              <option value="">Semua</option>
-              {Object.entries(STATUS_LABEL).map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-sm flex-1 min-w-40">
-            <span className="block text-ink/60 mb-1">Cari nama / instansi</span>
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              className="w-full border border-line rounded px-2.5 py-1.5"
-              placeholder="Ketik untuk mencari..."
-            />
-          </label>
-
+        <div className="mt-3 flex flex-wrap items-center gap-3 border-b border-line pb-5 print:hidden">
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="border border-line rounded px-2.5 py-1.5 text-sm"
+          />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="flex-1 min-w-40 border border-line rounded px-2.5 py-1.5 text-sm"
+            placeholder="Cari nama tamu, siswa, atau sekolah..."
+          />
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="border border-line rounded px-2.5 py-1.5 text-sm"
+          >
+            <option value="">Semua status</option>
+            {Object.entries(STATUS_LABEL).map(([val, label]) => (
+              <option key={val} value={val}>{label}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => setDate(todayStr())}
+            className="text-sm border border-line rounded px-3 py-1.5 hover:bg-navy hover:text-paper hover:border-navy transition-colors"
+          >
+            Hari ini
+          </button>
           <a
             href={`/api/guests/export${date ? `?date=${date}` : ""}`}
             className="text-sm border border-navy text-navy rounded px-3 py-1.5 hover:bg-navy hover:text-paper transition-colors"
           >
             Unduh CSV
           </a>
+          <button
+            onClick={() => window.print()}
+            className="text-sm border border-navy text-navy rounded px-3 py-1.5 hover:bg-navy hover:text-paper transition-colors"
+          >
+            Cetak PDF
+          </button>
         </div>
 
-        <div className="mt-6 overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="text-left text-ink/60 border-b border-line">
-                <th className="py-2 pr-4 font-medium">Jam Masuk</th>
-                <th className="py-2 pr-4 font-medium">Nama</th>
-                <th className="py-2 pr-4 font-medium">Instansi</th>
-                <th className="py-2 pr-4 font-medium">No. HP</th>
-                <th className="py-2 pr-4 font-medium">Keperluan</th>
-                <th className="py-2 pr-4 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr><td colSpan={6} className="py-8 text-center text-ink/50">Memuat data...</td></tr>
-              )}
-              {!loading && guests.length === 0 && (
-                <tr><td colSpan={6} className="py-8 text-center text-ink/50">Belum ada tamu pada filter ini.</td></tr>
-              )}
-              {!loading && guests.map((g) => (
-                <tr key={g.id} className="border-b border-line/70 align-top">
-                  <td className="py-3 pr-4 text-ink/70 whitespace-nowrap">
-                    {new Date(g.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
-                  </td>
-                  <td className="py-3 pr-4">{g.nama}</td>
-                  <td className="py-3 pr-4 text-ink/70">{g.asal_instansi}</td>
-                  <td className="py-3 pr-4 text-ink/70">{g.no_hp}</td>
-                  <td className="py-3 pr-4 text-ink/70">
-                    {g.keperluan}
-                    {g.nama_siswa && (
-                      <div className="mt-1 text-xs text-ink/50">
-                        {g.nama_siswa} &middot; {g.sekolah_asal} &rarr; {g.sekolah_tujuan}
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-3 pr-4">
-                    <select
-                      value={g.status}
-                      onChange={(e) => updateStatus(g.id, e.target.value as GuestStatus)}
-                      className={`text-xs rounded px-2 py-1 border ${
-                        g.status === "selesai"
-                          ? "border-moss text-moss"
-                          : g.status === "diproses"
-                          ? "border-gold-dark text-gold-dark"
-                          : "border-line text-ink/60"
-                      }`}
-                    >
-                      {Object.entries(STATUS_LABEL).map(([val, label]) => (
-                        <option key={val} value={val}>{label}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mt-4 divide-y divide-line">
+          {loading && <p className="py-8 text-center text-sm text-ink/50">Memuat data...</p>}
+          {!loading && guests.length === 0 && (
+            <p className="py-8 text-center text-sm text-ink/50">Belum ada tamu pada filter ini.</p>
+          )}
+          {!loading && guests.map((g, i) => (
+            <GuestRow key={g.id} guest={g} index={i + 1} onStatusChange={updateStatus} />
+          ))}
         </div>
+
+        <p className="mt-10 text-center text-xs text-ink/40 print:mt-4">
+          Data tersimpan otomatis dan dibagikan ke semua petugas yang membuka dasbor ini.
+        </p>
       </div>
+
+      <style jsx global>{`
+        @media print {
+          nav, header button, .no-print { display: none !important; }
+        }
+      `}</style>
     </main>
+  );
+}
+
+function StatCard({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="px-6 py-5 text-center">
+      <p className="font-serif text-4xl text-navy">{value}</p>
+      <p className="mt-1 text-sm text-ink/60">{label}</p>
+    </div>
+  );
+}
+
+function GuestRow({
+  guest,
+  index,
+  onStatusChange,
+}: {
+  guest: Guest;
+  index: number;
+  onStatusChange: (id: number, status: GuestStatus) => void;
+}) {
+  const masuk = new Date(guest.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+  const keluar = guest.status === "selesai" && guest.status_updated_at
+    ? new Date(guest.status_updated_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+    : null;
+
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3 py-4">
+      <div className="min-w-0">
+        <p className="text-sm">
+          <span className="font-serif text-navy">#{index} {guest.nama}</span>{" "}
+          <span className="ml-1 text-ink/50">Masuk {masuk}</span>
+        </p>
+
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClass(guest.keperluan)}`}>
+            {guest.keperluan}
+          </span>
+          <span className="text-xs text-ink/60">
+            <span className="font-medium text-ink/80">Instansi:</span> {guest.asal_instansi}{" "}
+            <span className="font-medium text-ink/80">HP:</span> {guest.no_hp}
+          </span>
+        </div>
+
+        {guest.nama_siswa && (
+          <p className="mt-1 text-xs text-ink/60">
+            <span className="font-medium text-ink/80">Siswa:</span> {guest.nama_siswa}{" "}
+            <span className="font-medium text-ink/80">Dari:</span> {guest.sekolah_asal}{" "}
+            <span className="font-medium text-ink/80">Ke:</span> {guest.sekolah_tujuan}
+          </p>
+        )}
+        {guest.catatan && <p className="mt-1 text-xs italic text-ink/50">{guest.catatan}</p>}
+      </div>
+
+      <div className="text-right text-sm shrink-0">
+        <select
+          value={guest.status}
+          onChange={(e) => onStatusChange(guest.id, e.target.value as GuestStatus)}
+          className={`rounded px-2 py-1 text-xs border no-print ${
+            guest.status === "selesai"
+              ? "border-moss text-moss"
+              : guest.status === "diproses"
+              ? "border-gold-dark text-gold-dark"
+              : "border-line text-ink/60"
+          }`}
+        >
+          {Object.entries(STATUS_LABEL).map(([val, label]) => (
+            <option key={val} value={val}>{label}</option>
+          ))}
+        </select>
+        {keluar && (
+          <p className="mt-1 text-xs text-ink/50">
+            Keluar {keluar}
+            {guest.status_updated_by && <span> oleh {guest.status_updated_by}</span>}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AddPetugasForm({ onDone }: { onDone: () => void }) {
+  const [form, setForm] = useState({ nama: "", initials: "", username: "", password: "" });
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  function update<K extends keyof typeof form>(key: K, value: string) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Gagal menambah petugas.");
+        return;
+      }
+      setSuccess(true);
+      setForm({ nama: "", initials: "", username: "", password: "" });
+    } catch {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-4 grid gap-3 border border-line bg-white p-4 sm:grid-cols-5">
+      <input required placeholder="Nama lengkap" value={form.nama} onChange={(e) => update("nama", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm sm:col-span-2" />
+      <input required maxLength={4} placeholder="Inisial (YAS)" value={form.initials} onChange={(e) => update("initials", e.target.value.toUpperCase())} className="border border-line rounded px-2.5 py-1.5 text-sm uppercase" />
+      <input required placeholder="Username" value={form.username} onChange={(e) => update("username", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm" />
+      <input required type="password" minLength={6} placeholder="Kata sandi" value={form.password} onChange={(e) => update("password", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm" />
+      <div className="flex items-center gap-3 sm:col-span-5">
+        <button type="submit" disabled={loading} className="bg-navy text-paper text-sm px-4 py-1.5 rounded hover:bg-navy-light disabled:opacity-60">
+          {loading ? "Menyimpan..." : "Tambah petugas"}
+        </button>
+        <button type="button" onClick={onDone} className="text-sm text-ink/60 hover:text-ink">Tutup</button>
+        {error && <span className="text-sm text-rust">{error}</span>}
+        {success && <span className="text-sm text-moss">Petugas baru berhasil ditambahkan.</span>}
+      </div>
+    </form>
+  );
+}
+
+function StampMark() {
+  return (
+    <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="17" cy="17" r="15.5" stroke="#B8863A" strokeWidth="1.5" strokeDasharray="2 3" />
+      <path d="M11 18.5L15 22L23 12" stroke="#B8863A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }

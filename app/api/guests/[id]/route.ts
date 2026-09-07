@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { updateGuestStatus, GuestStatus } from "@/lib/db";
-
-function isAdmin() {
-  return cookies().get("admin_session")?.value === "authorized";
-}
+import { getSession } from "@/lib/auth";
 
 const VALID_STATUSES: GuestStatus[] = ["menunggu", "diproses", "selesai"];
 
@@ -12,7 +8,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!isAdmin()) {
+  const session = getSession();
+  if (!session) {
     return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401 });
   }
 
@@ -28,7 +25,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Status tidak valid." }, { status: 400 });
   }
 
-  const guest = await updateGuestStatus(id, status);
+  const guest = await updateGuestStatus(id, status, session.initials);
   if (!guest) {
     return NextResponse.json({ error: "Data tidak ditemukan." }, { status: 404 });
   }

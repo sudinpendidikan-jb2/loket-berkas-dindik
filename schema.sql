@@ -9,5 +9,16 @@ CREATE TABLE IF NOT EXISTS guests (
   sekolah_tujuan TEXT,
   catatan TEXT,
   status TEXT NOT NULL DEFAULT 'menunggu',
+  status_updated_by TEXT,
+  status_updated_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS admins (
+  id SERIAL PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  nama TEXT NOT NULL,
+  initials TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

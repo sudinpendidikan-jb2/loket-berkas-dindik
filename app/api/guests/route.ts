@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { ensureSchema, insertGuest, listGuests } from "@/lib/db";
-
-function isAdmin() {
-  return cookies().get("admin_session")?.value === "authorized";
-}
+import { getSession } from "@/lib/auth";
 
 const MUTASI_KEPERLUAN = ["Mutasi masuk siswa", "Mutasi keluar siswa"];
 
@@ -57,7 +53,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isAdmin()) {
+  if (!getSession()) {
     return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401 });
   }
 
