@@ -91,26 +91,26 @@ export default function GuestFormPage() {
     <main className="relative min-h-screen overflow-hidden bg-[#0E1830]">
       <MonasBackdrop />
 
-      <div className="relative z-10 mx-auto max-w-5xl px-6 pb-12 pt-24 sm:pt-28 md:pb-16 md:pt-28">
-        <header className="absolute left-6 top-6 z-20 flex items-center gap-3 text-paper sm:left-8 sm:top-8 sm:gap-4">
-          <AgencyLogos />
-          <div className="hidden h-9 w-px bg-paper/20 sm:block" />
-          <div>
-            <p className="font-serif text-lg leading-snug">Dinas Pendidikan</p>
-            <p className="text-sm text-paper/60 leading-snug">Buku Tamu Digital</p>
+      <div className="relative z-10 mx-auto max-w-5xl px-6 pb-12 pt-8 md:pb-16 md:pt-10">
+        <header className="flex flex-col gap-6 text-paper md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <AgencyLogos />
+            <div className="hidden h-9 w-px bg-paper/20 sm:block" />
+            <div>
+              <p className="font-serif text-lg leading-snug">Dinas Pendidikan</p>
+              <p className="text-sm text-paper/60 leading-snug">Buku Tamu Digital</p>
+            </div>
           </div>
+
+          <h1 className="font-serif text-lg leading-snug sm:text-xl md:max-w-sm md:text-right">
+            Daftar Kunjungan Tamu Suku Dinas Pendidikan Wilayah II Kota Administrasi Jakarta Barat
+          </h1>
         </header>
 
-        <div className="grid gap-10 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-          <div className="text-paper md:pt-4">
-            <h1 className="font-serif text-2xl leading-tight sm:text-3xl md:text-4xl">
-              Daftar Kunjungan Tamu Suku Dinas Pendidikan Wilayah II Kota Administrasi Jakarta Barat
-            </h1>
-          </div>
-
+        <div className="mt-14 grid gap-10 md:mt-20 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:justify-items-end">
           <form
             onSubmit={handleSubmit}
-            className="rounded-lg border border-gold-light/20 bg-white/95 p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur sm:p-8"
+            className="w-full rounded-lg border border-gold-light/20 bg-white/95 p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur sm:p-8 md:col-start-2 md:max-w-md"
           >
             <p className="mb-6 font-serif text-xl text-navy">Data Kunjungan</p>
 
