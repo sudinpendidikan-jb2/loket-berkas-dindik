@@ -107,7 +107,7 @@ export default function GuestFormPage() {
           </h1>
         </header>
 
-        <div className="mt-14 flex justify-center md:mt-20 md:justify-end">
+        <div className="mt-20 flex justify-center md:mt-28">
           <form
             onSubmit={handleSubmit}
             className="w-full rounded-lg border border-gold-light/20 bg-white/95 p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur sm:p-8 md:max-w-md"
