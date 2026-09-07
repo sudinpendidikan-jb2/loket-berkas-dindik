@@ -8,12 +8,24 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
   const [hasAdmins, setHasAdmins] = useState(true);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/status")
-      .then((res) => res.json())
-      .then((data) => setHasAdmins(Boolean(data.hasAdmins)))
-      .catch(() => setHasAdmins(true))
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          // Gagal memuat status (mis. koneksi DB sempat bermasalah) — JANGAN
+          // anggap belum ada admin. Default ke form login supaya tidak
+          // memicu "buat akun pertama" secara keliru saat admin sudah ada.
+          throw new Error(data.error ?? "Gagal memuat status.");
+        }
+        setHasAdmins(Boolean(data.hasAdmins));
+      })
+      .catch((err) => {
+        setHasAdmins(true);
+        setStatusError(err.message ?? "Gagal memuat status.");
+      })
       .finally(() => setChecking(false));
   }, []);
 
@@ -34,10 +46,19 @@ export default function AdminLoginPage() {
           <div className="rounded-lg border border-gold-light/20 bg-white/95 p-8 text-center text-sm text-ink/50 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur">
             Memuat...
           </div>
-        ) : hasAdmins ? (
-          <LoginForm onSuccess={() => { router.push("/admin/dashboard"); router.refresh(); }} />
         ) : (
-          <SetupForm onSuccess={() => { router.push("/admin/dashboard"); router.refresh(); }} />
+          <>
+            {statusError && (
+              <p className="mb-3 rounded border-l-2 border-rust bg-white/90 px-3 py-2 text-sm text-rust">
+                Gagal mengecek status akun ({statusError}). Menampilkan form login.
+              </p>
+            )}
+            {hasAdmins ? (
+              <LoginForm onSuccess={() => { router.push("/admin/dashboard"); router.refresh(); }} />
+            ) : (
+              <SetupForm onSuccess={() => { router.push("/admin/dashboard"); router.refresh(); }} />
+            )}
+          </>
         )}
       </div>
 
