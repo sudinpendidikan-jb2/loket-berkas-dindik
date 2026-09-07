@@ -92,22 +92,20 @@ export default function GuestFormPage() {
       <MonasBackdrop />
 
       <div className="relative z-10 mx-auto max-w-5xl px-6 pb-12 pt-8 md:pb-16 md:pt-10">
-        <header className="flex flex-col gap-6 text-paper md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <AgencyLogos />
-            <div className="hidden h-9 w-px bg-paper/20 sm:block" />
-            <div>
-              <p className="font-serif text-lg leading-snug">Dinas Pendidikan</p>
-              <p className="text-sm text-paper/60 leading-snug">Buku Tamu Digital</p>
-            </div>
+        <header className="flex items-center gap-3 text-paper sm:gap-4">
+          <AgencyLogos />
+          <div className="hidden h-9 w-px bg-paper/20 sm:block" />
+          <div>
+            <p className="font-serif text-lg leading-snug">Dinas Pendidikan</p>
+            <p className="text-sm text-paper/60 leading-snug">Buku Tamu Digital</p>
           </div>
-
-          <h1 className="font-serif text-lg leading-snug text-center sm:text-xl md:max-w-sm">
-            Daftar Kunjungan Tamu Suku Dinas Pendidikan Wilayah II Kota Administrasi Jakarta Barat
-          </h1>
         </header>
 
-        <div className="mt-20 flex justify-center md:mt-28">
+        <h1 className="mx-auto mt-10 max-w-2xl text-center font-serif text-2xl leading-tight text-paper sm:text-3xl md:mt-14 md:text-4xl">
+          Daftar Kunjungan Tamu Suku Dinas Pendidikan Wilayah II Kota Administrasi Jakarta Barat
+        </h1>
+
+        <div className="mt-10 flex justify-center md:mt-14">
           <form
             onSubmit={handleSubmit}
             className="w-full rounded-lg border border-gold-light/20 bg-white/95 p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur sm:p-8 md:max-w-md"
