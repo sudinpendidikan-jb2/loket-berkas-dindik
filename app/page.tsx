@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { KEPERLUAN_OPTIONS } from "@/lib/constants";
-import { MonasBackdrop, StampMark } from "@/components/brand";
+import { MonasBackdrop, AgencyLogos } from "@/components/brand";
 
 const MUTASI_KEPERLUAN = ["Mutasi masuk siswa", "Mutasi keluar siswa"];
 
@@ -92,8 +92,9 @@ export default function GuestFormPage() {
       <MonasBackdrop />
 
       <div className="relative z-10 mx-auto max-w-5xl px-6 py-12 md:py-16">
-        <header className="flex items-center gap-3 text-paper">
-          <StampMark />
+        <header className="flex items-center gap-4 text-paper">
+          <AgencyLogos />
+          <div className="h-9 w-px bg-paper/20" />
           <div>
             <p className="font-serif text-lg leading-tight">Dinas Pendidikan</p>
             <p className="text-sm text-paper/60 leading-tight">Buku Tamu Digital</p>

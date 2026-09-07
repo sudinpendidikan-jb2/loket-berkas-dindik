@@ -1,3 +1,40 @@
+import Image from "next/image";
+
+/**
+ * Deret 3 logo resmi kop surat: Pemprov DKI Jakarta (Jaya Raya), Dinas Pendidikan,
+ * dan Kota Administrasi Jakarta Barat. File gambar ada di /public/logos.
+ * Pakai size="sm" untuk header ramping, "lg" untuk halaman yang butuh logo lebih besar.
+ */
+export function AgencyLogos({
+  size = "sm",
+  className = "",
+}: {
+  size?: "sm" | "lg";
+  className?: string;
+}) {
+  const h = size === "lg" ? 56 : 40;
+  const logos = [
+    { src: "/logos/jaya-raya.png", alt: "Logo Pemerintah Provinsi DKI Jakarta", w: 0.79 },
+    { src: "/logos/disdik.png", alt: "Logo Dinas Pendidikan DKI Jakarta", w: 0.84 },
+    { src: "/logos/jakarta-barat.png", alt: "Logo Kota Administrasi Jakarta Barat", w: 0.85 },
+  ];
+  return (
+    <div className={`flex items-center gap-3 ${className}`} aria-hidden="false">
+      {logos.map((logo) => (
+        <Image
+          key={logo.src}
+          src={logo.src}
+          alt={logo.alt}
+          height={h}
+          width={Math.round(h * logo.w)}
+          style={{ height: h, width: "auto" }}
+          priority
+        />
+      ))}
+    </div>
+  );
+}
+
 /** Latar siluet Monas dengan langit navy-emas — SVG asli, bukan foto. Dipakai bersama di form tamu dan halaman admin biar tampilannya senada. */
 export function MonasBackdrop() {
   return (

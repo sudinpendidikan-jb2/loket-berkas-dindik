@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MonasBackdrop, StampMark } from "@/components/brand";
+import { MonasBackdrop, AgencyLogos } from "@/components/brand";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -22,8 +22,8 @@ export default function AdminLoginPage() {
       <MonasBackdrop />
 
       <div className="relative z-10 w-full max-w-sm">
-        <div className="mb-6 flex items-center gap-3 text-paper">
-          <StampMark />
+        <div className="mb-6 flex flex-col items-center gap-3 text-paper text-center">
+          <AgencyLogos />
           <div>
             <p className="font-serif text-lg leading-tight">Dinas Pendidikan</p>
             <p className="text-sm text-paper/60 leading-tight">Buku Tamu Digital</p>
