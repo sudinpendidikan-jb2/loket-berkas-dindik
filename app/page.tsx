@@ -91,17 +91,17 @@ export default function GuestFormPage() {
     <main className="relative min-h-screen overflow-hidden bg-[#0E1830]">
       <MonasBackdrop />
 
-      <div className="relative z-10 mx-auto max-w-5xl px-6 py-12 md:py-16">
-        <header className="flex flex-wrap items-center gap-3 text-paper sm:gap-4">
+      <div className="relative z-10 mx-auto max-w-5xl px-6 pb-12 pt-24 sm:pt-28 md:pb-16 md:pt-28">
+        <header className="absolute left-6 top-6 z-20 flex items-center gap-3 text-paper sm:left-8 sm:top-8 sm:gap-4">
           <AgencyLogos />
           <div className="hidden h-9 w-px bg-paper/20 sm:block" />
           <div>
-            <p className="font-serif text-lg leading-tight">Dinas Pendidikan</p>
-            <p className="text-sm text-paper/60 leading-tight">Buku Tamu Digital</p>
+            <p className="font-serif text-lg leading-snug">Dinas Pendidikan</p>
+            <p className="text-sm text-paper/60 leading-snug">Buku Tamu Digital</p>
           </div>
         </header>
 
-        <div className="mt-14 grid gap-10 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:mt-20">
+        <div className="grid gap-10 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
           <div className="text-paper md:pt-4">
             <h1 className="font-serif text-2xl leading-tight sm:text-3xl md:text-4xl">
               Daftar Kunjungan Tamu Suku Dinas Pendidikan Wilayah II Kota Administrasi Jakarta Barat
