@@ -3,7 +3,8 @@ import Image from "next/image";
 /**
  * Deret 3 logo resmi kop surat: Pemprov DKI Jakarta (Jaya Raya), Dinas Pendidikan,
  * dan Kota Administrasi Jakarta Barat. File gambar ada di /public/logos.
- * Pakai size="sm" untuk header ramping, "lg" untuk halaman yang butuh logo lebih besar.
+ * Ukuran diatur lewat class Tailwind (bukan pixel tetap) supaya menyusut otomatis
+ * di layar sempit dan tidak memotong/overflow header.
  */
 export function AgencyLogos({
   size = "sm",
@@ -12,25 +13,28 @@ export function AgencyLogos({
   size?: "sm" | "lg";
   className?: string;
 }) {
-  const h = size === "lg" ? 56 : 40;
+  // h-8 md:h-9 (sm) / h-10 md:h-12 (lg) — semua pakai width:auto biar rasio tetap.
+  const sizeClass =
+    size === "lg" ? "h-10 w-auto md:h-12" : "h-8 w-auto md:h-9";
   const logos = [
-    { src: "/logos/jaya-raya.png", alt: "Logo Pemerintah Provinsi DKI Jakarta", w: 0.79 },
-    { src: "/logos/disdik.png", alt: "Logo Dinas Pendidikan DKI Jakarta", w: 0.84 },
-    { src: "/logos/jakarta-barat.png", alt: "Logo Kota Administrasi Jakarta Barat", w: 0.85 },
+    { src: "/logos/jaya-raya.png", alt: "Logo Pemerintah Provinsi DKI Jakarta", w: 132, h: 167 },
+    { src: "/logos/disdik.png", alt: "Logo Dinas Pendidikan DKI Jakarta", w: 140, h: 167 },
+    { src: "/logos/jakarta-barat.png", alt: "Logo Kota Administrasi Jakarta Barat", w: 141, h: 167 },
   ];
   return (
-    <div className={`flex items-center gap-3 ${className}`} aria-hidden="false">
+    <div className={`flex flex-shrink-0 items-center gap-2 sm:gap-3 ${className}`}>
       {logos.map((logo) => (
         <Image
           key={logo.src}
           src={logo.src}
           alt={logo.alt}
-          height={h}
-          width={Math.round(h * logo.w)}
-          style={{ height: h, width: "auto" }}
+          height={logo.h}
+          width={logo.w}
+          className={`${sizeClass} shrink-0 object-contain`}
           priority
         />
       ))}
+
     </div>
   );
 }

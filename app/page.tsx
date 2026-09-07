@@ -92,9 +92,9 @@ export default function GuestFormPage() {
       <MonasBackdrop />
 
       <div className="relative z-10 mx-auto max-w-5xl px-6 py-12 md:py-16">
-        <header className="flex items-center gap-4 text-paper">
+        <header className="flex flex-wrap items-center gap-3 text-paper sm:gap-4">
           <AgencyLogos />
-          <div className="h-9 w-px bg-paper/20" />
+          <div className="hidden h-9 w-px bg-paper/20 sm:block" />
           <div>
             <p className="font-serif text-lg leading-tight">Dinas Pendidikan</p>
             <p className="text-sm text-paper/60 leading-tight">Buku Tamu Digital</p>

@@ -98,9 +98,9 @@ export default function AdminDashboard() {
       <div className="relative z-10 mx-auto max-w-5xl px-6">
         <div className="rounded-lg border border-gold-light/20 bg-white/95 p-8 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur print:rounded-none print:border-0 print:bg-white print:p-0 print:shadow-none">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-navy pb-6">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <AgencyLogos />
-            <div className="h-9 w-px bg-navy/15" />
+            <div className="hidden h-9 w-px bg-navy/15 sm:block" />
             <div>
               <p className="font-serif text-2xl leading-tight text-navy">Buku Tamu Sudin Pendidikan</p>
               <p className="text-sm text-ink/60 leading-tight">Dasbor petugas — pemantauan kehadiran tamu</p>
