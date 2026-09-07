@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { STATUS_LABEL, KEPERLUAN_OPTIONS } from "@/lib/constants";
 import type { Guest, GuestStatus } from "@/lib/db";
+import { StampMark } from "@/components/brand";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -93,7 +94,7 @@ export default function AdminDashboard() {
       <div className="mx-auto max-w-5xl px-6 py-8 print:py-4">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-navy pb-6">
           <div className="flex items-center gap-3">
-            <StampMark />
+            <StampMark color="#B8863A" />
             <div>
               <p className="font-serif text-2xl leading-tight text-navy">Buku Tamu Sudin Pendidikan</p>
               <p className="text-sm text-ink/60 leading-tight">Dasbor petugas — pemantauan kehadiran tamu</p>
@@ -339,11 +340,3 @@ function AddPetugasForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-function StampMark() {
-  return (
-    <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <circle cx="17" cy="17" r="15.5" stroke="#B8863A" strokeWidth="1.5" strokeDasharray="2 3" />
-      <path d="M11 18.5L15 22L23 12" stroke="#B8863A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { MonasBackdrop, StampMark } from "@/components/brand";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -16,18 +17,44 @@ export default function AdminLoginPage() {
       .finally(() => setChecking(false));
   }, []);
 
-  if (checking) {
-    return (
-      <main className="min-h-screen bg-paper flex items-center justify-center px-6">
-        <p className="text-ink/50 text-sm">Memuat...</p>
-      </main>
-    );
-  }
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-[#0E1830] flex items-center justify-center px-6 py-16">
+      <MonasBackdrop />
 
-  return hasAdmins ? (
-    <LoginForm onSuccess={() => { router.push("/admin/dashboard"); router.refresh(); }} />
-  ) : (
-    <SetupForm onSuccess={() => { router.push("/admin/dashboard"); router.refresh(); }} />
+      <div className="relative z-10 w-full max-w-sm">
+        <div className="mb-6 flex items-center gap-3 text-paper">
+          <StampMark />
+          <div>
+            <p className="font-serif text-lg leading-tight">Dinas Pendidikan</p>
+            <p className="text-sm text-paper/60 leading-tight">Buku Tamu Digital</p>
+          </div>
+        </div>
+
+        {checking ? (
+          <div className="rounded-lg border border-gold-light/20 bg-white/95 p-8 text-center text-sm text-ink/50 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur">
+            Memuat...
+          </div>
+        ) : hasAdmins ? (
+          <LoginForm onSuccess={() => { router.push("/admin/dashboard"); router.refresh(); }} />
+        ) : (
+          <SetupForm onSuccess={() => { router.push("/admin/dashboard"); router.refresh(); }} />
+        )}
+      </div>
+
+      <style jsx global>{`
+        .admin-input {
+          width: 100%;
+          border: 1px solid #DAD5C8;
+          border-radius: 4px;
+          padding: 0.6rem 0.75rem;
+          background: white;
+          color: #201F1D;
+        }
+        .admin-input:focus {
+          border-color: #1B2A4A;
+        }
+      `}</style>
+    </main>
   );
 }
 
@@ -61,46 +88,47 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <main className="min-h-screen bg-paper flex items-center justify-center px-6">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm bg-white border border-line rounded p-8">
-        <p className="font-serif text-2xl text-navy">Panel Petugas</p>
-        <p className="text-sm text-ink/60 mt-1 mb-6">Masuk untuk mengelola daftar tamu.</p>
+    <form
+      onSubmit={handleSubmit}
+      className="rounded-lg border border-gold-light/20 bg-white/95 p-8 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur"
+    >
+      <p className="font-serif text-2xl text-navy">Panel Petugas</p>
+      <p className="mt-1 mb-6 text-sm text-ink/60">Masuk untuk mengelola daftar tamu.</p>
 
-        <div className="space-y-4">
-          <label className="block">
-            <span className="block text-sm text-ink/70 mb-1.5">Username</span>
-            <input
-              required
-              autoFocus
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full border border-line rounded px-3 py-2.5 focus:border-navy"
-            />
-          </label>
+      <div className="space-y-4">
+        <label className="block">
+          <span className="mb-1.5 block text-sm text-ink/70">Username</span>
+          <input
+            required
+            autoFocus
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="admin-input"
+          />
+        </label>
 
-          <label className="block">
-            <span className="block text-sm text-ink/70 mb-1.5">Kata sandi</span>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-line rounded px-3 py-2.5 focus:border-navy"
-            />
-          </label>
-        </div>
+        <label className="block">
+          <span className="mb-1.5 block text-sm text-ink/70">Kata sandi</span>
+          <input
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="admin-input"
+          />
+        </label>
+      </div>
 
-        {error && <p className="mt-3 text-sm text-rust">{error}</p>}
+      {error && <p className="mt-3 border-l-2 border-rust pl-3 text-sm text-rust">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-6 w-full bg-navy text-paper font-medium py-2.5 rounded hover:bg-navy-light transition-colors disabled:opacity-60"
-        >
-          {loading ? "Memeriksa..." : "Masuk"}
-        </button>
-      </form>
-    </main>
+      <button
+        type="submit"
+        disabled={loading}
+        className="mt-6 w-full rounded bg-navy py-2.5 font-medium text-paper transition-colors hover:bg-navy-light disabled:opacity-60"
+      >
+        {loading ? "Memeriksa..." : "Masuk"}
+      </button>
+    </form>
   );
 }
 
@@ -137,71 +165,72 @@ function SetupForm({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <main className="min-h-screen bg-paper flex items-center justify-center px-6">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm bg-white border border-line rounded p-8">
-        <p className="font-serif text-2xl text-navy">Buat Akun Petugas Pertama</p>
-        <p className="text-sm text-ink/60 mt-1 mb-6">
-          Belum ada akun petugas. Buat akun pertama untuk mulai mengelola dashboard.
-        </p>
+    <form
+      onSubmit={handleSubmit}
+      className="rounded-lg border border-gold-light/20 bg-white/95 p-8 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur"
+    >
+      <p className="font-serif text-2xl text-navy">Buat Akun Petugas Pertama</p>
+      <p className="mt-1 mb-6 text-sm text-ink/60">
+        Belum ada akun petugas. Buat akun pertama untuk mulai mengelola dashboard.
+      </p>
 
-        <div className="space-y-4">
-          <label className="block">
-            <span className="block text-sm text-ink/70 mb-1.5">Nama lengkap</span>
-            <input
-              required
-              autoFocus
-              value={form.nama}
-              onChange={(e) => update("nama", e.target.value)}
-              className="w-full border border-line rounded px-3 py-2.5 focus:border-navy"
-              placeholder="Contoh: Ilyas Maulana"
-            />
-          </label>
+      <div className="space-y-4">
+        <label className="block">
+          <span className="mb-1.5 block text-sm text-ink/70">Nama lengkap</span>
+          <input
+            required
+            autoFocus
+            value={form.nama}
+            onChange={(e) => update("nama", e.target.value)}
+            className="admin-input"
+            placeholder="Contoh: Ilyas Maulana"
+          />
+        </label>
 
-          <label className="block">
-            <span className="block text-sm text-ink/70 mb-1.5">Inisial singkat (untuk jejak status)</span>
-            <input
-              required
-              maxLength={4}
-              value={form.initials}
-              onChange={(e) => update("initials", e.target.value.toUpperCase())}
-              className="w-full border border-line rounded px-3 py-2.5 focus:border-navy uppercase"
-              placeholder="Contoh: YAS"
-            />
-          </label>
+        <label className="block">
+          <span className="mb-1.5 block text-sm text-ink/70">Inisial singkat (untuk jejak status)</span>
+          <input
+            required
+            maxLength={4}
+            value={form.initials}
+            onChange={(e) => update("initials", e.target.value.toUpperCase())}
+            className="admin-input uppercase"
+            placeholder="Contoh: YAS"
+          />
+        </label>
 
-          <label className="block">
-            <span className="block text-sm text-ink/70 mb-1.5">Username</span>
-            <input
-              required
-              value={form.username}
-              onChange={(e) => update("username", e.target.value)}
-              className="w-full border border-line rounded px-3 py-2.5 focus:border-navy"
-            />
-          </label>
+        <label className="block">
+          <span className="mb-1.5 block text-sm text-ink/70">Username</span>
+          <input
+            required
+            value={form.username}
+            onChange={(e) => update("username", e.target.value)}
+            className="admin-input"
+          />
+        </label>
 
-          <label className="block">
-            <span className="block text-sm text-ink/70 mb-1.5">Kata sandi (minimal 6 karakter)</span>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={form.password}
-              onChange={(e) => update("password", e.target.value)}
-              className="w-full border border-line rounded px-3 py-2.5 focus:border-navy"
-            />
-          </label>
-        </div>
+        <label className="block">
+          <span className="mb-1.5 block text-sm text-ink/70">Kata sandi (minimal 6 karakter)</span>
+          <input
+            type="password"
+            required
+            minLength={6}
+            value={form.password}
+            onChange={(e) => update("password", e.target.value)}
+            className="admin-input"
+          />
+        </label>
+      </div>
 
-        {error && <p className="mt-3 text-sm text-rust">{error}</p>}
+      {error && <p className="mt-3 border-l-2 border-rust pl-3 text-sm text-rust">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-6 w-full bg-navy text-paper font-medium py-2.5 rounded hover:bg-navy-light transition-colors disabled:opacity-60"
-        >
-          {loading ? "Membuat akun..." : "Buat akun & masuk"}
-        </button>
-      </form>
-    </main>
+      <button
+        type="submit"
+        disabled={loading}
+        className="mt-6 w-full rounded bg-navy py-2.5 font-medium text-paper transition-colors hover:bg-navy-light disabled:opacity-60"
+      >
+        {loading ? "Membuat akun..." : "Buat akun & masuk"}
+      </button>
+    </form>
   );
 }
