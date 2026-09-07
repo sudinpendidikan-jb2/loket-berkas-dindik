@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { AGENCY_INFO } from "@/lib/constants";
 
 /**
  * Deret 3 logo resmi kop surat: Pemprov DKI Jakarta (Jaya Raya), Dinas Pendidikan,
@@ -104,5 +105,67 @@ export function StampMark({ color = "#D9AE6E" }: { color?: string }) {
       <circle cx="17" cy="17" r="15.5" stroke={color} strokeWidth="1.5" strokeDasharray="2 3" />
       <path d="M11 18.5L15 22L23 12" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+/**
+ * Kop surat resmi untuk tampilan cetak/PDF (window.print). Disembunyikan di
+ * layar (hidden) dan hanya muncul saat mencetak (print:block), supaya hasil
+ * cetak berformat surat dinas: logo kiri-kanan, nama instansi, alamat/kontak,
+ * garis pemisah tebal, lalu baris judul laporan + tanggal & waktu cetak.
+ */
+export function PrintLetterhead({
+  reportTitle,
+  tanggalLabel,
+}: {
+  reportTitle: string;
+  tanggalLabel: string;
+}) {
+  const dicetak = new Date().toLocaleString("id-ID");
+
+  return (
+    <div className="hidden print:block">
+      <div className="flex items-center justify-between gap-4">
+        <Image
+          src="/logos/jaya-raya.png"
+          alt="Logo Pemerintah Provinsi DKI Jakarta"
+          width={132}
+          height={167}
+          className="h-16 w-auto shrink-0"
+        />
+        <div className="flex-1 text-center leading-tight text-black">
+          {AGENCY_INFO.lines.map((line, i) => (
+            <p
+              key={line}
+              className={`font-bold uppercase tracking-wide ${i < 2 ? "text-[13px]" : "text-[15px]"}`}
+            >
+              {line}
+            </p>
+          ))}
+          <p className="mt-1 text-[11px] font-normal normal-case tracking-normal">
+            {AGENCY_INFO.address}
+          </p>
+          <p className="text-[11px] font-normal normal-case tracking-normal">
+            {AGENCY_INFO.contact}
+          </p>
+        </div>
+        <Image
+          src="/logos/disdik.png"
+          alt="Logo Dinas Pendidikan DKI Jakarta"
+          width={140}
+          height={167}
+          className="h-16 w-auto shrink-0"
+        />
+      </div>
+
+      <div className="mt-2 border-b-[3px] border-black" />
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/60 py-2">
+        <p className="font-serif text-base font-bold text-black">{reportTitle}</p>
+        <p className="text-xs text-black/60">
+          Tanggal: {tanggalLabel} — Dicetak: {dicetak}
+        </p>
+      </div>
+    </div>
   );
 }

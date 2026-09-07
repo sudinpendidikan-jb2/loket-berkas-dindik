@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { STATUS_LABEL, KEPERLUAN_OPTIONS } from "@/lib/constants";
 import type { Guest, GuestStatus } from "@/lib/db";
-import { MonasBackdrop, AgencyLogos } from "@/components/brand";
+import { MonasBackdrop, AgencyLogos, PrintLetterhead } from "@/components/brand";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -97,7 +97,7 @@ export default function AdminDashboard() {
 
       <div className="relative z-10 mx-auto max-w-5xl px-6">
         <div className="rounded-lg border border-gold-light/20 bg-white/95 p-8 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur print:rounded-none print:border-0 print:bg-white print:p-0 print:shadow-none">
-        <header className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-navy pb-6">
+        <header className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-navy pb-6 print:hidden">
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <AgencyLogos />
             <div className="hidden h-9 w-px bg-navy/15 sm:block" />
@@ -130,6 +130,15 @@ export default function AdminDashboard() {
           </div>
         </header>
 
+        <PrintLetterhead
+          reportTitle="Daftar Kehadiran"
+          tanggalLabel={new Date(date).toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}
+        />
+
         {showAddPetugas && (
           <div className="print:hidden">
             <AddPetugasForm onDone={() => setShowAddPetugas(false)} />
@@ -142,7 +151,7 @@ export default function AdminDashboard() {
           <StatCard value={selesaiDilayani} label="Selesai dilayani" />
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 print:hidden">
           <p className="font-serif text-lg text-navy">Daftar Kehadiran</p>
           <p className="text-sm text-ink/50">
             {total} entri — {isToday ? "hari ini" : new Date(date).toLocaleDateString("id-ID", { dateStyle: "medium" })}
