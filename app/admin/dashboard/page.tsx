@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { STATUS_LABEL, KEPERLUAN_OPTIONS } from "@/lib/constants";
 import type { Guest, GuestStatus } from "@/lib/db";
-import { StampMark } from "@/components/brand";
+import { StampMark, MonasBackdrop } from "@/components/brand";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -90,8 +90,13 @@ export default function AdminDashboard() {
   const selesaiDilayani = guests.filter((g) => g.status === "selesai").length;
 
   return (
-    <main className="min-h-screen bg-paper">
-      <div className="mx-auto max-w-5xl px-6 py-8 print:py-4">
+    <main className="relative min-h-screen overflow-hidden bg-[#0E1830] py-10 print:bg-white print:py-0">
+      <div className="print:hidden">
+        <MonasBackdrop />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-5xl px-6">
+        <div className="rounded-lg border border-gold-light/20 bg-white/95 p-8 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur print:rounded-none print:border-0 print:bg-white print:p-0 print:shadow-none">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-navy pb-6">
           <div className="flex items-center gap-3">
             <StampMark color="#B8863A" />
@@ -199,6 +204,7 @@ export default function AdminDashboard() {
         <p className="mt-10 text-center text-xs text-ink/40 print:mt-4">
           Data tersimpan otomatis dan dibagikan ke semua petugas yang membuka dasbor ini.
         </p>
+        </div>
       </div>
 
       <style jsx global>{`
