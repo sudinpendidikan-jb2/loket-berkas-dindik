@@ -104,8 +104,8 @@ export default function GuestFormPage() {
         <div className="mt-14 grid gap-10 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:mt-20">
           <div className="text-paper md:pt-4">
             <p className="text-sm tracking-wide text-gold-light/90">Selamat datang</p>
-            <h1 className="mt-2 font-serif text-4xl leading-tight md:text-[2.75rem]">
-              Silakan catat kunjungan Anda.
+            <h1 className="mt-2 font-serif text-2xl leading-tight sm:text-3xl md:text-4xl">
+              Daftar Kunjungan Tamu Suku Dinas Pendidikan Wilayah II Kota Administrasi Jakarta Barat
             </h1>
             <p className="mt-4 max-w-sm leading-relaxed text-paper/70">
               Isi data di samping sebelum menunggu dipanggil petugas. Waktu
