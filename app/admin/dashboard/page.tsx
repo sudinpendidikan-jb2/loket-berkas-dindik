@@ -343,7 +343,7 @@ function AddPetugasForm({ onDone }: { onDone: () => void }) {
       <input required placeholder="Nama lengkap" value={form.nama} onChange={(e) => update("nama", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm sm:col-span-2" />
       <input required maxLength={4} placeholder="Inisial (YAS)" value={form.initials} onChange={(e) => update("initials", e.target.value.toUpperCase())} className="border border-line rounded px-2.5 py-1.5 text-sm uppercase" />
       <input required placeholder="Username" value={form.username} onChange={(e) => update("username", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm" />
-      <input required type="password" minLength={6} placeholder="Kata sandi" value={form.password} onChange={(e) => update("password", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm" />
+      <input required type="password" minLength={8} placeholder="Kata sandi" value={form.password} onChange={(e) => update("password", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm" />
       <div className="flex items-center gap-3 sm:col-span-5">
         <button type="submit" disabled={loading} className="bg-navy text-paper text-sm px-4 py-1.5 rounded hover:bg-navy-light disabled:opacity-60">
           {loading ? "Menyimpan..." : "Tambah petugas"}

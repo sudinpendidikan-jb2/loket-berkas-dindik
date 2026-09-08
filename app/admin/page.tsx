@@ -231,11 +231,11 @@ function SetupForm({ onSuccess }: { onSuccess: () => void }) {
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm text-ink/70">Kata sandi (minimal 6 karakter)</span>
+          <span className="mb-1.5 block text-sm text-ink/70">Kata sandi (minimal 8 karakter)</span>
           <input
             type="password"
             required
-            minLength={6}
+            minLength={8}
             value={form.password}
             onChange={(e) => update("password", e.target.value)}
             className="admin-input"

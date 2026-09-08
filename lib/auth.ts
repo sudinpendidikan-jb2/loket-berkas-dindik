@@ -4,7 +4,22 @@ import { cookies } from "next/headers";
 // SESSION_SECRET dipakai untuk menandatangani cookie sesi admin, supaya
 // orang lain tidak bisa memalsukan cookie tanpa tahu secret ini.
 // Set di Vercel Environment Variables (string acak, minimal 32 karakter).
-const SESSION_SECRET = process.env.SESSION_SECRET ?? "";
+//
+// PENTING: sengaja TIDAK diberi default kosong. Kalau env var ini lupa
+// di-set, aplikasi harus gagal jelas saat start, bukan diam-diam pakai
+// kunci HMAC kosong yang bisa ditebak siapa saja (celah pemalsuan sesi).
+const SESSION_SECRET = requireSessionSecret();
+
+function requireSessionSecret(): string {
+  const value = process.env.SESSION_SECRET;
+  if (!value || value.trim().length < 32) {
+    throw new Error(
+      "SESSION_SECRET belum diset atau kurang dari 32 karakter. " +
+        "Set env var SESSION_SECRET (contoh: `openssl rand -hex 32`) sebelum menjalankan aplikasi."
+    );
+  }
+  return value;
+}
 
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");

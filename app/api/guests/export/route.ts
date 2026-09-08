@@ -2,11 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { listGuests } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 
+// Cegah CSV/Formula Injection: field ini diisi publik lewat form tamu,
+// lalu dibuka petugas di Excel/Sheets. Kalau isinya diawali =, +, -, @, atau
+// tab/CR, aplikasi spreadsheet bisa membacanya sebagai formula, bukan teks.
+// Solusinya: beri prefiks kutip tunggal supaya selalu dibaca sebagai teks.
+const DANGEROUS_PREFIX = /^[=+\-@\t\r]/;
+
 function csvEscape(value: string) {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
+  let safe = value;
+  if (DANGEROUS_PREFIX.test(safe)) {
+    safe = `'${safe}`;
   }
-  return value;
+  if (safe.includes(",") || safe.includes('"') || safe.includes("\n")) {
+    return `"${safe.replace(/"/g, '""')}"`;
+  }
+  return safe;
 }
 
 export async function GET(req: NextRequest) {

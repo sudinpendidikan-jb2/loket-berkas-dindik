@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
     if (!username || !password || !nama || !initials) {
       return NextResponse.json({ error: "Semua kolom wajib diisi." }, { status: 400 });
     }
-    if (String(password).length < 6) {
-      return NextResponse.json({ error: "Kata sandi minimal 6 karakter." }, { status: 400 });
+    if (String(password).length < 8) {
+      return NextResponse.json({ error: "Kata sandi minimal 8 karakter." }, { status: 400 });
     }
 
     const admin = await createAdmin({

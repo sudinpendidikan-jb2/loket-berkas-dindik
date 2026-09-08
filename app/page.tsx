@@ -21,6 +21,7 @@ const initialForm = {
   sekolah_asal: "",
   sekolah_tujuan: "",
   catatan: "",
+  website: "", // honeypot anti-bot: field ini harus selalu kosong
 };
 
 export default function GuestFormPage() {
@@ -111,6 +112,22 @@ export default function GuestFormPage() {
             className="w-full rounded-lg border border-gold-light/20 bg-white/95 p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur sm:p-8 md:max-w-md"
           >
             <p className="mb-6 font-serif text-xl text-navy">Data Kunjungan</p>
+
+            {/* Honeypot anti-bot: disembunyikan dari manusia lewat CSS,
+               tapi tetap terlihat oleh bot pengisi-form otomatis. Jangan
+               pakai `type="hidden"` karena beberapa bot melewatinya. */}
+            <div className="absolute -left-[9999px] top-auto" aria-hidden="true">
+              <label>
+                Website
+                <input
+                  type="text"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={form.website}
+                  onChange={(e) => update("website", e.target.value)}
+                />
+              </label>
+            </div>
 
             <div className="space-y-5">
               <Field label="Nama lengkap">
@@ -221,10 +238,16 @@ export default function GuestFormPage() {
               <p className="mt-4 border-l-2 border-rust pl-3 text-sm text-rust">{error}</p>
             )}
 
+            <p className="mt-4 text-xs leading-relaxed text-ink/50">
+              Data yang Anda isikan hanya digunakan untuk keperluan pencatatan kunjungan
+              dan layanan di loket Sudin Pendidikan, serta tidak dibagikan ke pihak lain
+              di luar keperluan tersebut.
+            </p>
+
             <button
               type="submit"
               disabled={submitting}
-              className="mt-8 w-full rounded bg-navy py-3 font-medium text-paper transition-colors hover:bg-navy-light disabled:opacity-60"
+              className="mt-4 w-full rounded bg-navy py-3 font-medium text-paper transition-colors hover:bg-navy-light disabled:opacity-60"
             >
               {submitting ? "Menyimpan..." : "Kirim data kunjungan"}
             </button>
