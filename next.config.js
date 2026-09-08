@@ -18,14 +18,19 @@ const nextConfig = {
           // Aman diaktifkan karena Vercel selalu serve lewat HTTPS.
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
           // Content-Security-Policy: hanya izinkan resource dari domain sendiri.
-          // 'unsafe-inline' untuk style diperlukan karena Next.js/Tailwind
-          // memakai inline style pada beberapa komponen; sesuaikan lagi kalau
-          // nanti menambah CDN/skrip pihak ketiga.
+          // 'unsafe-inline' pada script-src DIPERLUKAN karena Next.js App Router
+          // menyisipkan inline <script> untuk hydration (mengirim data hasil
+          // render server ke client). Tanpa ini, JavaScript React tidak pernah
+          // "menyala" dan halaman macet di tampilan awal (mis. stuck di
+          // "Memuat..."). Trade-off: proteksi CSP terhadap XSS jadi sedikit
+          // lebih longgar. Untuk versi lebih ketat, bisa pakai CSP nonce
+          // per-request lewat middleware (lihat docs Next.js: Content Security
+          // Policy) — tapi butuh perubahan lebih di middleware.ts & layout.tsx.
           {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self'",
+              "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data:",
               "font-src 'self'",
