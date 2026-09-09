@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminByUsername, createAdmin } from "@/lib/db";
-import { getSession, hashPassword } from "@/lib/auth";
+import { getSession, hashPassword, validateUsername } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   const session = getSession();
@@ -13,18 +13,23 @@ export async function POST(req: NextRequest) {
     if (!username || !password || !nama || !initials) {
       return NextResponse.json({ error: "Semua kolom wajib diisi." }, { status: 400 });
     }
+
+    const usernameCheck = validateUsername(username);
+    if (!usernameCheck.ok) {
+      return NextResponse.json({ error: usernameCheck.error }, { status: 400 });
+    }
+
     if (String(password).length < 8) {
       return NextResponse.json({ error: "Kata sandi minimal 8 karakter." }, { status: 400 });
     }
 
-    const usernameNorm = String(username).trim().toLowerCase();
-    const exists = await getAdminByUsername(usernameNorm);
+    const exists = await getAdminByUsername(usernameCheck.value);
     if (exists) {
       return NextResponse.json({ error: "Username sudah dipakai." }, { status: 400 });
     }
 
     await createAdmin({
-      username: usernameNorm,
+      username: usernameCheck.value,
       password_hash: hashPassword(password),
       nama: String(nama).trim(),
       initials: String(initials).trim().toUpperCase().slice(0, 4),

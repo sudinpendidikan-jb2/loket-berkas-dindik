@@ -169,3 +169,50 @@ export async function createAdmin(input: {
   `;
   return rows[0] as unknown as Admin;
 }
+
+// Angka acak apa saja, dipakai sebagai "kunci" advisory lock khusus untuk
+// proses setup admin pertama. Nilainya bebas, yang penting konsisten dan
+// tidak dipakai oleh lock lain di aplikasi ini.
+const SETUP_LOCK_KEY = 872193456;
+
+/**
+ * Membuat admin pertama HANYA jika belum ada admin sama sekali - dan
+ * melakukannya secara atomik (aman dari race condition).
+ *
+ * Sebelumnya, endpoint /api/admin/setup mengecek countAdmins() lalu
+ * memanggil createAdmin() secara terpisah. Kalau dua request datang nyaris
+ * bersamaan saat tabel admins masih kosong, keduanya bisa lolos pengecekan
+ * "count === 0" sebelum salah satu sempat INSERT - hasilnya lebih dari satu
+ * admin "pertama" berhasil dibuat lewat rute yang seharusnya cuma sekali
+ * pakai (WSTG-IDNT-02).
+ *
+ * Di sini, pg_advisory_xact_lock membuat request kedua MENUNGGU sampai
+ * transaksi request pertama selesai (commit/rollback) sebelum ia boleh
+ * melanjutkan pengecekan count-nya sendiri. Jadi begitu satu admin berhasil
+ * dibuat, request lain yang menyusul pasti melihat count > 0 dan ditolak.
+ * Lock otomatis lepas saat transaksi berakhir (xact = per-transaction lock).
+ */
+export async function createFirstAdminIfNone(input: {
+  username: string;
+  password_hash: string;
+  nama: string;
+  initials: string;
+}): Promise<Admin | null> {
+  return sql.begin(async (tx) => {
+    await tx`SELECT pg_advisory_xact_lock(${SETUP_LOCK_KEY});`;
+
+    const rows = await tx`SELECT COUNT(*)::int AS count FROM admins;`;
+    const count = rows[0]?.count ?? 0;
+    if (count > 0) {
+      // Sudah ada admin (dibuat oleh request lain yang menang duluan).
+      return null;
+    }
+
+    const inserted = await tx`
+      INSERT INTO admins (username, password_hash, nama, initials)
+      VALUES (${input.username}, ${input.password_hash}, ${input.nama}, ${input.initials})
+      RETURNING *;
+    `;
+    return inserted[0] as unknown as Admin;
+  });
+}
