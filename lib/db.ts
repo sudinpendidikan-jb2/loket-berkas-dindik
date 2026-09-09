@@ -34,15 +34,25 @@ export interface Admin {
   created_at: string;
 }
 
-<<<<<<< HEAD
-// ensureSchema() menjalankan DDL ...
-...
-async function runEnsureSchema() {
-=======
-// ensureSchema() dipanggil di beberapa API route ...
-...
+// ensureSchema() dipanggil di beberapa API route setiap ada request masuk,
+// termasuk sekarang endpoint login (untuk memastikan tabel rate_limits
+// ada). Supaya tidak mengulang ~10 query CREATE/ALTER di setiap request,
+// hasilnya di-cache per instance server — request pertama (cold start)
+// yang menanggung biayanya, request berikutnya di instance yang sama
+// langsung skip. Kalau sempat gagal, cache direset supaya boleh dicoba lagi.
+let schemaReadyPromise: Promise<void> | null = null;
+
+export function ensureSchema(): Promise<void> {
+  if (!schemaReadyPromise) {
+    schemaReadyPromise = runSchemaMigrations().catch((err) => {
+      schemaReadyPromise = null;
+      throw err;
+    });
+  }
+  return schemaReadyPromise;
+}
+
 async function runSchemaMigrations(): Promise<void> {
->>>>>>> 69c12d67d8cf2038688a86594020f80e7fbb56ed
   await sql`
     CREATE TABLE IF NOT EXISTS guests (
       id SERIAL PRIMARY KEY,
