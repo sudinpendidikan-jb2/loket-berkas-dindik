@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ensureSchema, insertGuest, listGuests } from "@/lib/db";
+import { ensureSchema, insertGuest, listGuests, hitRateLimit } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/rate-limit";
 import { NO_STORE_HEADERS } from "@/lib/http";
 import { KEPERLUAN_OPTIONS, INSTANSI_OPTIONS } from "@/lib/constants";
 
@@ -24,8 +24,12 @@ const MAX_NOTE_LENGTH = 1000;
 
 export async function POST(req: NextRequest) {
   try {
+    // hitRateLimit butuh tabel rate_limits sudah ada, jadi ensureSchema()
+    // harus jalan dulu sebelum kita cek batasnya.
+    await ensureSchema();
+
     const ip = getClientIp(req);
-    const { allowed, retryAfterMs } = rateLimit(`guest-submit:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS);
+    const { allowed, retryAfterMs } = await hitRateLimit(`guest-submit:ip:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS);
     if (!allowed) {
       const retryAfterSec = Math.ceil(retryAfterMs / 1000);
       return NextResponse.json(
@@ -34,7 +38,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await ensureSchema();
     const body = await req.json();
 
     // Honeypot: field tersembunyi di form yang tidak boleh diisi manusia.
