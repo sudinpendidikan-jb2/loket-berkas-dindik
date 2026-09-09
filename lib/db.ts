@@ -34,7 +34,26 @@ export interface Admin {
   created_at: string;
 }
 
+// ensureSchema() menjalankan DDL (CREATE TABLE / ALTER TABLE) yang sifatnya
+// idempoten, tapi tetap mahal kalau dieksekusi ulang di SETIAP request publik
+// (form tamu, status admin, dsb). Di lingkungan serverless tiap instance
+// fungsi baru akan menjalankannya sekali (saat cold start pertama), lalu
+// memori instance yang sama akan melewatinya selama instance itu hidup.
+let schemaEnsured: Promise<void> | null = null;
+
 export async function ensureSchema() {
+  if (!schemaEnsured) {
+    schemaEnsured = runEnsureSchema().catch((err) => {
+      // Kalau gagal, jangan simpan promise yang gagal - biar percobaan
+      // berikutnya boleh mencoba lagi (mis. DB sempat down sesaat).
+      schemaEnsured = null;
+      throw err;
+    });
+  }
+  return schemaEnsured;
+}
+
+async function runEnsureSchema() {
   await sql`
     CREATE TABLE IF NOT EXISTS guests (
       id SERIAL PRIMARY KEY,

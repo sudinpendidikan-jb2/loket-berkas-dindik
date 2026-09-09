@@ -24,6 +24,12 @@ export async function POST(req: NextRequest) {
     if (!username || !password) {
       return NextResponse.json({ error: "Username dan kata sandi wajib diisi." }, { status: 400 });
     }
+    // Batas panjang input, supaya orang tidak bisa mengirim string raksasa
+    // (mis. jutaan karakter) untuk memicu scrypt memproses payload besar
+    // secara berulang-ulang (DoS pada CPU/memori server).
+    if (String(username).length > 100 || String(password).length > 200) {
+      return NextResponse.json({ error: "Username atau kata sandi terlalu panjang." }, { status: 400 });
+    }
 
     const admin = await getAdminByUsername(String(username).trim().toLowerCase());
     if (!admin || !verifyPassword(password, admin.password_hash)) {

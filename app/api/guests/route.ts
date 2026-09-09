@@ -3,8 +3,14 @@ import { ensureSchema, insertGuest, listGuests } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { NO_STORE_HEADERS } from "@/lib/http";
+import { KEPERLUAN_OPTIONS, INSTANSI_OPTIONS } from "@/lib/constants";
 
 const MUTASI_KEPERLUAN = ["Mutasi masuk siswa", "Mutasi keluar siswa"];
+
+// Nomor HP Indonesia: boleh diawali +62/62/0, lalu 8-13 digit lagi setelah
+// awalan "8". Cukup longgar untuk menampung variasi operator, tapi menolak
+// input yang jelas bukan nomor telepon.
+const PHONE_REGEX = /^(\+62|62|0)8[0-9]{7,12}$/;
 
 // Form ini publik (tanpa login), jadi butuh perlindungan dasar dari spam/bot:
 // - rate limit per IP
@@ -55,6 +61,19 @@ export async function POST(req: NextRequest) {
     }
     if (body.catatan && String(body.catatan).length > MAX_NOTE_LENGTH) {
       return NextResponse.json({ error: "Keterangan tambahan terlalu panjang." }, { status: 400 });
+    }
+
+    // Validasi opsi terhadap daftar resmi di lib/constants.ts, bukan cuma
+    // "field tidak kosong". Tanpa ini, request langsung ke API (di luar UI
+    // dropdown) bisa menyisipkan nilai bebas untuk asal_instansi/keperluan.
+    if (!INSTANSI_OPTIONS.includes(body.asal_instansi)) {
+      return NextResponse.json({ error: "Asal instansi tidak valid." }, { status: 400 });
+    }
+    if (!KEPERLUAN_OPTIONS.includes(body.keperluan)) {
+      return NextResponse.json({ error: "Keperluan tidak valid." }, { status: 400 });
+    }
+    if (!PHONE_REGEX.test(String(body.no_hp).trim())) {
+      return NextResponse.json({ error: "Format nomor HP tidak valid." }, { status: 400 });
     }
 
     if (MUTASI_KEPERLUAN.includes(body.keperluan)) {

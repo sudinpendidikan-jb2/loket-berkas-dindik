@@ -23,6 +23,11 @@ export async function POST(req: NextRequest) {
     if (String(password).length < 8) {
       return NextResponse.json({ error: "Kata sandi minimal 8 karakter." }, { status: 400 });
     }
+    // Batas atas panjang input (lihat catatan di route login) supaya scrypt
+    // tidak dipaksa memproses payload raksasa.
+    if (String(username).length > 100 || String(password).length > 200 || String(nama).length > 200) {
+      return NextResponse.json({ error: "Salah satu kolom terlalu panjang." }, { status: 400 });
+    }
 
     const admin = await createAdmin({
       username: String(username).trim().toLowerCase(),
