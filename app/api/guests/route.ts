@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listGuests } from "@/lib/db";
+import { ensureSchema, insertGuest, listGuests } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { NO_STORE_HEADERS } from "@/lib/http";
 import { KEPERLUAN_OPTIONS, INSTANSI_OPTIONS } from "@/lib/constants";
 
-// Cegah CSV/Formula Injection: field ini diisi publik lewat form tamu,
-// lalu dibuka petugas di Excel/Sheets. Kalau isinya diawali =, +, -, @, atau
-// tab/CR, aplikasi spreadsheet bisa membacanya sebagai formula, bukan teks.
-// Solusinya: beri prefiks kutip tunggal supaya selalu dibaca sebagai teks.
-const DANGEROUS_PREFIX = /^[=+\-@\t\r]/;
+const MUTASI_KEPERLUAN = ["Mutasi masuk siswa", "Mutasi keluar siswa"];
 
-<<<<<<< HEAD
 // Nomor HP Indonesia: boleh diawali +62/62/0, lalu 8-13 digit lagi setelah
 // awalan "8". Cukup longgar untuk menampung variasi operator, tapi menolak
 // input yang jelas bukan nomor telepon.
@@ -110,17 +106,7 @@ export async function POST(req: NextRequest) {
       { error: "Gagal menyimpan data. Coba lagi." },
       { status: 500 }
     );
-=======
-function csvEscape(value: string) {
-  let safe = value;
-  if (DANGEROUS_PREFIX.test(safe)) {
-    safe = `'${safe}`;
->>>>>>> 69c12d67d8cf2038688a86594020f80e7fbb56ed
   }
-  if (safe.includes(",") || safe.includes('"') || safe.includes("\n")) {
-    return `"${safe.replace(/"/g, '""')}"`;
-  }
-  return safe;
 }
 
 export async function GET(req: NextRequest) {
@@ -128,54 +114,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401, headers: NO_STORE_HEADERS });
   }
 
-  const { searchParams } = new URL(req.url);
-  const date = searchParams.get("date") ?? undefined;
-
-  const guests = await listGuests({ date });
-
-  const header = [
-    "Jam Masuk",
-    "Nama",
-    "Asal Instansi",
-    "No. HP",
-    "Keperluan",
-    "Nama Siswa",
-    "Sekolah Asal",
-    "Sekolah Tujuan",
-    "Status",
-    "Catatan",
-  ];
-
-  const lines = [header.join(",")];
-  for (const g of guests) {
-    lines.push(
-      [
-        new Date(g.created_at).toLocaleString("id-ID"),
-        g.nama,
-        g.asal_instansi,
-        g.no_hp,
-        g.keperluan,
-        g.nama_siswa ?? "",
-        g.sekolah_asal ?? "",
-        g.sekolah_tujuan ?? "",
-        g.status,
-        g.catatan ?? "",
-      ]
-        .map((v) => csvEscape(String(v)))
-        .join(",")
+  try {
+    await ensureSchema();
+    const { searchParams } = new URL(req.url);
+    const guests = await listGuests({
+      date: searchParams.get("date") ?? undefined,
+      status: searchParams.get("status") ?? undefined,
+      q: searchParams.get("q") ?? undefined,
+    });
+    // Data tamu bersifat sensitif (nama, no. HP, keperluan) - jangan sampai
+    // tersimpan di cache browser/proxy setelah admin melihatnya.
+    return NextResponse.json({ guests }, { headers: NO_STORE_HEADERS });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json(
+      { error: "Gagal memuat data." },
+      { status: 500 }
     );
   }
-
-  const csv = lines.join("\n");
-  const filename = `daftar-tamu-${date ?? "semua"}.csv`;
-
-  return new NextResponse(csv, {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-      // File CSV ini berisi data pribadi tamu (nama, no. HP, dll) - jangan
-      // sampai tersimpan di cache browser atau proxy perantara.
-      ...NO_STORE_HEADERS,
-    },
-  });
 }
