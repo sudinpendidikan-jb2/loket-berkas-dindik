@@ -73,6 +73,60 @@ export async function ensureSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
+
+  // Rate limit disimpan di DB (bukan memori proses) supaya konsisten lintas
+  // instance/region di lingkungan serverless (WSTG-ATHN-03, Temuan 1).
+  await sql`
+    CREATE TABLE IF NOT EXISTS rate_limits (
+      key TEXT PRIMARY KEY,
+      count INT NOT NULL,
+      reset_at TIMESTAMPTZ NOT NULL
+    );
+  `;
+}
+
+let rateLimitTableEnsured = false;
+
+// Self-healing untuk deployment lama yang sudah pernah menjalankan
+// ensureSchema() sebelum tabel rate_limits ditambahkan: dipanggil sekali per
+// cold start dari lib/rate-limit.ts, jadi endpoint /api/admin/setup tidak
+// perlu dijalankan ulang.
+export async function ensureRateLimitTable() {
+  if (rateLimitTableEnsured) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS rate_limits (
+      key TEXT PRIMARY KEY,
+      count INT NOT NULL,
+      reset_at TIMESTAMPTZ NOT NULL
+    );
+  `;
+  rateLimitTableEnsured = true;
+}
+
+// Increment atomik berbasis fixed-window: baris dikunci oleh Postgres saat
+// terjadi konflik ON CONFLICT, jadi request paralel dari instance serverless
+// manapun tetap terhitung benar terhadap satu baris yang sama.
+export async function incrementRateLimit(
+  key: string,
+  windowMs: number
+): Promise<{ count: number; resetAt: Date }> {
+  await ensureRateLimitTable();
+  const rows = await sql<{ count: number; reset_at: Date }[]>`
+    INSERT INTO rate_limits (key, count, reset_at)
+    VALUES (${key}, 1, now() + (${windowMs} * interval '1 millisecond'))
+    ON CONFLICT (key) DO UPDATE SET
+      count = CASE
+        WHEN rate_limits.reset_at <= now() THEN 1
+        ELSE rate_limits.count + 1
+      END,
+      reset_at = CASE
+        WHEN rate_limits.reset_at <= now() THEN now() + (${windowMs} * interval '1 millisecond')
+        ELSE rate_limits.reset_at
+      END
+    RETURNING count, reset_at;
+  `;
+  const row = rows[0];
+  return { count: row.count, resetAt: new Date(row.reset_at) };
 }
 
 export async function insertGuest(input: {
@@ -154,6 +208,17 @@ export async function countAdmins(): Promise<number> {
 export async function getAdminByUsername(username: string): Promise<Admin | null> {
   const rows = await sql`SELECT * FROM admins WHERE username = ${username};`;
   return (rows[0] as unknown as Admin) ?? null;
+}
+
+export async function updateAdminPassword(
+  username: string,
+  password_hash: string
+): Promise<boolean> {
+  const rows = await sql`
+    UPDATE admins SET password_hash = ${password_hash} WHERE username = ${username}
+    RETURNING id;
+  `;
+  return rows.length > 0;
 }
 
 export async function createAdmin(input: {

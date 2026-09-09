@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminByUsername, createAdmin } from "@/lib/db";
-import { getSession, hashPassword, validateUsername } from "@/lib/auth";
+import { getSession, hashPassword, validateUsername, validatePasswordLength } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   const session = getSession();
@@ -19,8 +19,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: usernameCheck.error }, { status: 400 });
     }
 
-    if (String(password).length < 8) {
-      return NextResponse.json({ error: "Kata sandi minimal 8 karakter." }, { status: 400 });
+    const passwordError = validatePasswordLength(password);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
     }
 
     const exists = await getAdminByUsername(usernameCheck.value);

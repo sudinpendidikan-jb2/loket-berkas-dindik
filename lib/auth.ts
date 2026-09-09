@@ -25,6 +25,27 @@ function requireSessionSecret(): string {
   return value;
 }
 
+// scrypt sengaja mahal secara komputasi (itu tujuannya untuk password
+// hashing) — tapi itu berarti scryptSync juga jadi vektor DoS kalau
+// panjang input tidak dibatasi: payload password 1-10MB yang dikirim
+// berulang ke /login atau /register bisa menyaturasi CPU server
+// (WSTG-ATHN-07). MAX_PASSWORD_LENGTH mengunci panjang input SEBELUM
+// scryptSync dipanggil, sehingga biaya komputasi per request tetap
+// konstan terlepas dari ukuran payload yang dikirim penyerang.
+export const MIN_PASSWORD_LENGTH = 8;
+export const MAX_PASSWORD_LENGTH = 128;
+
+export function validatePasswordLength(password: unknown): string | null {
+  const value = String(password ?? "");
+  if (value.length < MIN_PASSWORD_LENGTH) {
+    return `Kata sandi minimal ${MIN_PASSWORD_LENGTH} karakter.`;
+  }
+  if (value.length > MAX_PASSWORD_LENGTH) {
+    return `Kata sandi maksimal ${MAX_PASSWORD_LENGTH} karakter.`;
+  }
+  return null;
+}
+
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
   const hash = scryptSync(password, salt, 64).toString("hex");

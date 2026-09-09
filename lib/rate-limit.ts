@@ -1,49 +1,52 @@
-// Rate limiter sederhana berbasis memori, per proses server.
+// Rate limiter berbasis Postgres (lihat incrementRateLimit di lib/db.ts).
 //
-// CATATAN PENTING: di lingkungan serverless (mis. Vercel) tiap instance
-// fungsi punya memori sendiri-sendiri, jadi limit ini TIDAK 100% akurat
-// lintas instance/region. Untuk perlindungan yang lebih kuat & konsisten,
-// pindahkan penyimpanan counter ini ke Redis/Upstash atau layanan sejenis.
-// Tapi ini tetap jauh lebih baik daripada tanpa rate limit sama sekali,
-// dan cukup efektif untuk deployment single-region / traffic kecil-menengah.
+// Kenapa bukan Map di memori: di lingkungan serverless (mis. Vercel) tiap
+// instance/warm container punya memori sendiri-sendiri, jadi limiter berbasis
+// memori bisa dilewati dengan menyebar request ke instance berbeda
+// (WSTG-ATHN-03, Temuan 1). Menyimpan counter di DB yang sama dengan data
+// aplikasi membuat batas ini konsisten di instance/region manapun, tanpa
+// menambah dependensi infra baru (Redis/Upstash) di luar Supabase yang sudah
+// dipakai.
+import { incrementRateLimit } from "@/lib/db";
 
-interface Bucket {
-  count: number;
-  resetAt: number;
-}
-
-const buckets = new Map<string, Bucket>();
-
-// Bersihkan bucket kadaluarsa secara berkala supaya memori tidak bocor.
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, bucket] of buckets) {
-    if (bucket.resetAt <= now) buckets.delete(key);
-  }
-}, 60_000).unref?.();
-
-export function rateLimit(
+export async function rateLimit(
   key: string,
   limit: number,
   windowMs: number
-): { allowed: boolean; remaining: number; retryAfterMs: number } {
-  const now = Date.now();
-  const bucket = buckets.get(key);
+): Promise<{ allowed: boolean; remaining: number; retryAfterMs: number }> {
+  const { count, resetAt } = await incrementRateLimit(key, windowMs);
+  const retryAfterMs = Math.max(0, resetAt.getTime() - Date.now());
 
-  if (!bucket || bucket.resetAt <= now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, remaining: limit - 1, retryAfterMs: 0 };
+  if (count > limit) {
+    return { allowed: false, remaining: 0, retryAfterMs };
   }
-
-  if (bucket.count >= limit) {
-    return { allowed: false, remaining: 0, retryAfterMs: bucket.resetAt - now };
-  }
-
-  bucket.count += 1;
-  return { allowed: true, remaining: limit - bucket.count, retryAfterMs: 0 };
+  return { allowed: true, remaining: Math.max(0, limit - count), retryAfterMs: 0 };
 }
 
+// Trust boundary untuk IP klien (WSTG-ATHN-03, Temuan 2):
+//
+// Header X-Forwarded-For/X-Real-IP hanya bisa dipercaya kalau kita YAKIN
+// request tidak bisa mencapai server tanpa lewat reverse proxy tepercaya
+// yang menimpa header tsb. Vercel adalah edge network yang menimpa header
+// ini untuk semua traffic yang masuk (klien tidak bisa mem-bypass edge-nya),
+// jadi di sana header tersebut aman dipakai. Di luar Vercel (self-host, VPS,
+// docker compose, dsb.) header ini bisa dipalsukan bebas oleh siapa pun
+// kecuali admin secara eksplisit mengonfirmasi topologi proxy-nya lewat
+// TRUST_PROXY_HEADERS=1 (mis. ada Nginx/Caddy di depan yang SELALU
+// menimpa header ini sebelum diteruskan ke app).
 export function getClientIp(req: Request): string {
+  const runningOnVercel = process.env.VERCEL === "1";
+  const trustConfigured = process.env.TRUST_PROXY_HEADERS === "1";
+
+  if (!runningOnVercel && !trustConfigured) {
+    // Tidak ada dasar untuk mempercayai header ini di topologi yang tidak
+    // dikenal. Mengembalikan "unknown" membuat SEMUA request non-Vercel
+    // berbagi satu bucket rate-limit per-IP (konservatif, tidak bisa
+    // dilewati dengan memalsukan header), sementara lockout per-username
+    // (lihat app/api/admin/login/route.ts) tetap menjadi lapisan utama.
+    return "unknown";
+  }
+
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0].trim();
   const realIp = req.headers.get("x-real-ip");
