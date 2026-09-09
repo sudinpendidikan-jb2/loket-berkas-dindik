@@ -25,10 +25,49 @@ function requireSessionSecret(): string {
   return value;
 }
 
+// Batas panjang kata sandi (WSTG-ATHN-07). scryptSync di bawah ini
+// komputasinya cukup berat secara sengaja (bagus untuk keamanan hash),
+// tapi itu juga berarti kalau tidak ada batas MAKSIMAL panjang input,
+// seseorang bisa mengirim payload password raksasa (mis. beberapa MB)
+// berulang kali untuk membebani CPU server (resource exhaustion / DoS).
+// 128 karakter jauh lebih dari cukup untuk kata sandi manusia normal
+// ataupun yang digenerate oleh password manager.
+export const MIN_PASSWORD_LENGTH = 8;
+export const MAX_PASSWORD_LENGTH = 128;
+
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
   const hash = scryptSync(password, salt, 64).toString("hex");
   return `${salt}:${hash}`;
+}
+
+// Aturan username: 4-32 karakter, hanya huruf kecil, angka, titik,
+// underscore, dan tanda hubung. Menutup celah username 1 karakter atau
+// isi simbol aneh yang lolos begitu saja sebelumnya (WSTG-IDNT-04).
+const USERNAME_PATTERN = /^[a-z0-9._-]+$/;
+const USERNAME_MIN_LENGTH = 4;
+const USERNAME_MAX_LENGTH = 32;
+
+export type UsernameValidation =
+  | { ok: true; value: string }
+  | { ok: false; error: string };
+
+export function validateUsername(raw: string): UsernameValidation {
+  const value = String(raw ?? "").trim().toLowerCase();
+
+  if (value.length < USERNAME_MIN_LENGTH || value.length > USERNAME_MAX_LENGTH) {
+    return {
+      ok: false,
+      error: `Username harus ${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH} karakter.`,
+    };
+  }
+  if (!USERNAME_PATTERN.test(value)) {
+    return {
+      ok: false,
+      error: "Username hanya boleh berisi huruf kecil, angka, titik (.), underscore (_), atau tanda hubung (-).",
+    };
+  }
+  return { ok: true, value };
 }
 
 export function verifyPassword(password: string, stored: string): boolean {

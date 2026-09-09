@@ -34,6 +34,7 @@ export interface Admin {
   created_at: string;
 }
 
+<<<<<<< HEAD
 // ensureSchema() menjalankan DDL (CREATE TABLE / ALTER TABLE) yang sifatnya
 // idempoten, tapi tetap mahal kalau dieksekusi ulang di SETIAP request publik
 // (form tamu, status admin, dsb). Di lingkungan serverless tiap instance
@@ -54,6 +55,27 @@ export async function ensureSchema() {
 }
 
 async function runEnsureSchema() {
+=======
+// ensureSchema() dipanggil di beberapa API route setiap ada request masuk,
+// termasuk sekarang endpoint login (untuk memastikan tabel rate_limits
+// ada). Supaya tidak mengulang ~10 query CREATE/ALTER di setiap request,
+// hasilnya di-cache per instance server — request pertama (cold start)
+// yang menanggung biayanya, request berikutnya di instance yang sama
+// langsung skip. Kalau sempat gagal, cache direset supaya boleh dicoba lagi.
+let schemaReadyPromise: Promise<void> | null = null;
+
+export function ensureSchema(): Promise<void> {
+  if (!schemaReadyPromise) {
+    schemaReadyPromise = runSchemaMigrations().catch((err) => {
+      schemaReadyPromise = null;
+      throw err;
+    });
+  }
+  return schemaReadyPromise;
+}
+
+async function runSchemaMigrations(): Promise<void> {
+>>>>>>> 69c12d67d8cf2038688a86594020f80e7fbb56ed
   await sql`
     CREATE TABLE IF NOT EXISTS guests (
       id SERIAL PRIMARY KEY,
@@ -90,6 +112,22 @@ async function runEnsureSchema() {
       nama TEXT NOT NULL,
       initials TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `;
+
+  // Index buat mempercepat query daftar kunjungan (ORDER BY created_at DESC,
+  // filter per status), makin berguna kalau data tamu sudah banyak.
+  await sql`CREATE INDEX IF NOT EXISTS idx_guests_created_at ON guests (created_at DESC);`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_guests_status ON guests (status);`;
+
+  // Rate limiting (WSTG-ATHN-03). Disimpan di database, BUKAN di memori
+  // proses Node.js — supaya batas percobaan login konsisten lintas semua
+  // instance/region serverless (mis. Vercel), bukan cuma per-instance.
+  await sql`
+    CREATE TABLE IF NOT EXISTS rate_limits (
+      key TEXT PRIMARY KEY,
+      count INT NOT NULL DEFAULT 1,
+      window_start TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
 }
@@ -187,4 +225,99 @@ export async function createAdmin(input: {
     RETURNING *;
   `;
   return rows[0] as unknown as Admin;
+}
+
+// Angka acak apa saja, dipakai sebagai "kunci" advisory lock khusus untuk
+// proses setup admin pertama. Nilainya bebas, yang penting konsisten dan
+// tidak dipakai oleh lock lain di aplikasi ini.
+const SETUP_LOCK_KEY = 872193456;
+
+/**
+ * Membuat admin pertama HANYA jika belum ada admin sama sekali - dan
+ * melakukannya secara atomik (aman dari race condition).
+ *
+ * Sebelumnya, endpoint /api/admin/setup mengecek countAdmins() lalu
+ * memanggil createAdmin() secara terpisah. Kalau dua request datang nyaris
+ * bersamaan saat tabel admins masih kosong, keduanya bisa lolos pengecekan
+ * "count === 0" sebelum salah satu sempat INSERT - hasilnya lebih dari satu
+ * admin "pertama" berhasil dibuat lewat rute yang seharusnya cuma sekali
+ * pakai (WSTG-IDNT-02).
+ *
+ * Di sini, pg_advisory_xact_lock membuat request kedua MENUNGGU sampai
+ * transaksi request pertama selesai (commit/rollback) sebelum ia boleh
+ * melanjutkan pengecekan count-nya sendiri. Jadi begitu satu admin berhasil
+ * dibuat, request lain yang menyusul pasti melihat count > 0 dan ditolak.
+ * Lock otomatis lepas saat transaksi berakhir (xact = per-transaction lock).
+ */
+export async function createFirstAdminIfNone(input: {
+  username: string;
+  password_hash: string;
+  nama: string;
+  initials: string;
+}): Promise<Admin | null> {
+  return sql.begin(async (tx) => {
+    await tx`SELECT pg_advisory_xact_lock(${SETUP_LOCK_KEY});`;
+
+    const rows = await tx`SELECT COUNT(*)::int AS count FROM admins;`;
+    const count = rows[0]?.count ?? 0;
+    if (count > 0) {
+      // Sudah ada admin (dibuat oleh request lain yang menang duluan).
+      return null;
+    }
+
+    const inserted = await tx`
+      INSERT INTO admins (username, password_hash, nama, initials)
+      VALUES (${input.username}, ${input.password_hash}, ${input.nama}, ${input.initials})
+      RETURNING *;
+    `;
+    return inserted[0] as unknown as Admin;
+  });
+}
+
+// ---- Rate limiting (WSTG-ATHN-03) ----
+//
+// Disimpan di tabel Postgres (bukan Map di memori proses) supaya batasnya
+// konsisten walau request mendarat di instance/region serverless yang
+// berbeda-beda. `key` bebas (mis. "login:ip:1.2.3.4" atau
+// "login:user:sudin01") supaya IP dan username masing-masing punya kuota
+// sendiri (lihat pemakaiannya di app/api/admin/login/route.ts).
+export async function hitRateLimit(
+  key: string,
+  limit: number,
+  windowMs: number
+): Promise<{ allowed: boolean; retryAfterMs: number }> {
+  const windowSeconds = Math.max(1, Math.ceil(windowMs / 1000));
+  const rows = await sql`
+    INSERT INTO rate_limits (key, count, window_start)
+    VALUES (${key}, 1, now())
+    ON CONFLICT (key) DO UPDATE SET
+      count = CASE
+        WHEN rate_limits.window_start < now() - (${windowSeconds} * interval '1 second')
+        THEN 1
+        ELSE rate_limits.count + 1
+      END,
+      window_start = CASE
+        WHEN rate_limits.window_start < now() - (${windowSeconds} * interval '1 second')
+        THEN now()
+        ELSE rate_limits.window_start
+      END
+    RETURNING count, window_start;
+  `;
+  const row = rows[0] as unknown as { count: number; window_start: string };
+  const allowed = row.count <= limit;
+  const resetAt = new Date(row.window_start).getTime() + windowMs;
+  const retryAfterMs = allowed ? 0 : Math.max(0, resetAt - Date.now());
+  return { allowed, retryAfterMs };
+}
+
+// Dipakai saat login BERHASIL, supaya percobaan sebelumnya (mis. salah
+// ketik sandi beberapa kali) tidak terus menghitung ke arah lockout
+// setelah pengguna akhirnya berhasil masuk dengan benar.
+export async function resetRateLimit(key: string): Promise<void> {
+  await sql`DELETE FROM rate_limits WHERE key = ${key};`;
+}
+
+// ---- Ganti kata sandi (WSTG-ATHN-08) ----
+export async function updateAdminPassword(username: string, passwordHash: string): Promise<void> {
+  await sql`UPDATE admins SET password_hash = ${passwordHash} WHERE username = ${username};`;
 }
