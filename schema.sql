@@ -22,11 +22,3 @@ CREATE TABLE IF NOT EXISTS admins (
   initials TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
--- Rate limit login/change-password, disimpan di DB (bukan memori proses)
--- supaya konsisten lintas instance serverless. Lihat lib/rate-limit.ts.
-CREATE TABLE IF NOT EXISTS rate_limits (
-  key TEXT PRIMARY KEY,
-  count INT NOT NULL,
-  reset_at TIMESTAMPTZ NOT NULL
-);

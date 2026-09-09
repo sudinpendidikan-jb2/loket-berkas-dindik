@@ -1,58 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ensureSchema, createFirstAdminIfNone } from "@/lib/db";
-import { hashPassword, createSessionToken, validateUsername, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@/lib/auth";
+import { ensureSchema, countAdmins, createAdmin } from "@/lib/db";
+import { hashPassword, createSessionToken } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
     await ensureSchema();
 
-    const { username, password, nama, initials } = await req.json();
-    if (!username || !password || !nama || !initials) {
-      return NextResponse.json({ error: "Semua kolom wajib diisi." }, { status: 400 });
-    }
-
-    const usernameCheck = validateUsername(username);
-    if (!usernameCheck.ok) {
-      return NextResponse.json({ error: usernameCheck.error }, { status: 400 });
-    }
-
-    if (String(password).length < MIN_PASSWORD_LENGTH || String(password).length > MAX_PASSWORD_LENGTH) {
-      return NextResponse.json(
-        { error: `Kata sandi harus ${MIN_PASSWORD_LENGTH}-${MAX_PASSWORD_LENGTH} karakter.` },
-        { status: 400 }
-      );
-    }
-
-    // Rute ini hanya boleh dipakai sekali, waktu belum ada petugas sama
-    // sekali. createFirstAdminIfNone mengecek DAN membuat admin secara
-    // atomik (advisory lock) supaya dua request bersamaan tidak bisa
-    // sama-sama lolos saat tabel admins masih kosong (WSTG-IDNT-02).
-    const admin = await createFirstAdminIfNone({
-      username: usernameCheck.value,
-      password_hash: hashPassword(password),
-      nama: String(nama).trim(),
-      initials: String(initials).trim().toUpperCase().slice(0, 4),
-    });
-
-    if (!admin) {
+    // Rute ini hanya boleh dipakai sekali, waktu belum ada petugas sama sekali.
+    // Setelah itu, penambahan petugas baru harus lewat dashboard (sudah login).
+    const existing = await countAdmins();
+    if (existing > 0) {
       return NextResponse.json(
         { error: "Akun admin sudah ada. Masuk lewat form login." },
         { status: 400 }
       );
     }
 
-<<<<<<< HEAD
     const { username, password, nama, initials } = await req.json();
     if (!username || !password || !nama || !initials) {
       return NextResponse.json({ error: "Semua kolom wajib diisi." }, { status: 400 });
     }
-    if (String(password).length < 8) {
-      return NextResponse.json({ error: "Kata sandi minimal 8 karakter." }, { status: 400 });
-    }
-    // Batas atas panjang input (lihat catatan di route login) supaya scrypt
-    // tidak dipaksa memproses payload raksasa.
-    if (String(username).length > 100 || String(password).length > 200 || String(nama).length > 200) {
-      return NextResponse.json({ error: "Salah satu kolom terlalu panjang." }, { status: 400 });
+    if (String(password).length < 6) {
+      return NextResponse.json({ error: "Kata sandi minimal 6 karakter." }, { status: 400 });
     }
 
     const admin = await createAdmin({
@@ -62,8 +31,6 @@ export async function POST(req: NextRequest) {
       initials: String(initials).trim().toUpperCase().slice(0, 4),
     });
 
-=======
->>>>>>> 69c12d67d8cf2038688a86594020f80e7fbb56ed
     const token = createSessionToken({
       username: admin.username,
       name: admin.nama,
