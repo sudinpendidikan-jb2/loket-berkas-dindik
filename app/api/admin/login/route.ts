@@ -1,83 +1,85 @@
-import { NextRequest, NextResponse } from "next/server";
-import { ensureSchema, getAdminByUsername, hitRateLimit, resetRateLimit } from "@/lib/db";
-import { verifyPassword, createSessionToken, MAX_PASSWORD_LENGTH } from "@/lib/auth";
-import { getClientIp } from "@/lib/rate-limit";
+"use client";
 
-// Maksimal percobaan login per IP dan per akun (username), dalam jendela
-// waktu yang sama. Keduanya dicek terpisah (WSTG-ATHN-03):
-//  - Limit per IP menahan satu penyerang yang mencoba banyak username dari
-//    alamat yang sama.
-//  - Limit per USERNAME (account-level lockout) menahan penyerang yang
-//    menyebar percobaan dari banyak IP/botnet ke SATU akun spesifik --
-//    yang tidak akan terhalang kalau cuma ada limit per-IP.
-const IP_LIMIT = 8;
-const USERNAME_LIMIT = 5;
-const WINDOW_MS = 10 * 60 * 1000;
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-export async function POST(req: NextRequest) {
-  try {
-    await ensureSchema();
+export default function AdminLoginPage() {
+  const router = useRouter();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-    const ip = getClientIp(req);
-    const ipCheck = await hitRateLimit(`login:ip:${ip}`, IP_LIMIT, WINDOW_MS);
-    if (!ipCheck.allowed) {
-      const retryAfterSec = Math.ceil(ipCheck.retryAfterMs / 1000);
-      return NextResponse.json(
-        { error: `Terlalu banyak percobaan login. Coba lagi dalam ${Math.ceil(retryAfterSec / 60)} menit.` },
-        { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
-      );
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Gagal masuk.");
+        return;
+      }
+
+      router.push("/admin/dashboard");
+      router.refresh();
+    } catch {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setLoading(false);
     }
-
-    const { username, password } = await req.json();
-    if (!username || !password) {
-      return NextResponse.json({ error: "Username dan kata sandi wajib diisi." }, { status: 400 });
-    }
-
-    // WSTG-ATHN-07: tolak lebih dulu SEBELUM masuk ke scryptSync (yang mahal
-    // secara komputasi), supaya payload password raksasa tidak bisa dipakai
-    // untuk membebani CPU server (resource exhaustion / DoS).
-    if (String(password).length > MAX_PASSWORD_LENGTH) {
-      return NextResponse.json({ error: "Kata sandi tidak valid." }, { status: 400 });
-    }
-
-    const normalizedUsername = String(username).trim().toLowerCase();
-    const userCheck = await hitRateLimit(`login:user:${normalizedUsername}`, USERNAME_LIMIT, WINDOW_MS);
-    if (!userCheck.allowed) {
-      const retryAfterSec = Math.ceil(userCheck.retryAfterMs / 1000);
-      return NextResponse.json(
-        { error: `Terlalu banyak percobaan login. Coba lagi dalam ${Math.ceil(retryAfterSec / 60)} menit.` },
-        { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
-      );
-    }
-
-    const admin = await getAdminByUsername(normalizedUsername);
-    if (!admin || !verifyPassword(password, admin.password_hash)) {
-      return NextResponse.json({ error: "Username atau kata sandi salah." }, { status: 401 });
-    }
-
-    // Login berhasil -> hapus jejak percobaan gagal sebelumnya supaya tidak
-    // ikut menumpuk ke arah lockout berikutnya.
-    await resetRateLimit(`login:ip:${ip}`);
-    await resetRateLimit(`login:user:${normalizedUsername}`);
-
-    const token = createSessionToken({
-      username: admin.username,
-      name: admin.nama,
-      initials: admin.initials,
-      exp: Date.now() + 1000 * 60 * 60 * 8,
-    });
-
-    const res = NextResponse.json({ ok: true, nama: admin.nama, initials: admin.initials });
-    res.cookies.set("admin_session", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 8, // 8 jam
-    });
-    return res;
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Gagal masuk. Coba lagi." }, { status: 500 });
   }
+
+  return (
+    <main className="min-h-screen bg-[#0E1830] flex items-center justify-center px-6">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-sm rounded-lg border border-gold-light/20 bg-white/95 p-8 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur"
+      >
+        <p className="font-serif text-2xl text-navy">Buku Tamu Sudin Pendidikan</p>
+        <p className="text-sm text-ink/60 mt-1 mb-6">Masuk untuk mengelola daftar tamu.</p>
+
+        <div className="space-y-4">
+          <label className="block">
+            <span className="block text-sm text-ink/70 mb-1.5">Username</span>
+            <input
+              required
+              autoFocus
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full border border-line rounded px-3 py-2.5 focus:border-navy"
+            />
+          </label>
+
+          <label className="block">
+            <span className="block text-sm text-ink/70 mb-1.5">Kata sandi</span>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full border border-line rounded px-3 py-2.5 focus:border-navy"
+            />
+          </label>
+        </div>
+
+        {error && <p className="mt-3 text-sm text-rust">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="mt-6 w-full bg-navy text-paper font-medium py-2.5 rounded hover:bg-navy-light transition-colors disabled:opacity-60"
+        >
+          {loading ? "Memeriksa..." : "Masuk"}
+        </button>
+      </form>
+    </main>
+  );
 }
