@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Sembunyikan header "X-Powered-By: Next.js" agar penyerang tidak mudah
+  // fingerprint framework/versi yang dipakai (WSTG-INFO-02).
+  poweredByHeader: false,
   async headers() {
     return [
       {
