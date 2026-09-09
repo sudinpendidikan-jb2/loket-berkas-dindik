@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ensureSchema, insertGuest, listGuests } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { NO_STORE_HEADERS } from "@/lib/http";
 
 const MUTASI_KEPERLUAN = ["Mutasi masuk siswa", "Mutasi keluar siswa"];
 
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   if (!getSession()) {
-    return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401 });
+    return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401, headers: NO_STORE_HEADERS });
   }
 
   try {
@@ -102,7 +103,9 @@ export async function GET(req: NextRequest) {
       status: searchParams.get("status") ?? undefined,
       q: searchParams.get("q") ?? undefined,
     });
-    return NextResponse.json({ guests });
+    // Data tamu bersifat sensitif (nama, no. HP, keperluan) - jangan sampai
+    // tersimpan di cache browser/proxy setelah admin melihatnya.
+    return NextResponse.json({ guests }, { headers: NO_STORE_HEADERS });
   } catch (err) {
     console.error(err);
     return NextResponse.json(
