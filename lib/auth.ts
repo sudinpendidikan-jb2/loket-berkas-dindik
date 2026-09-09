@@ -25,6 +25,16 @@ function requireSessionSecret(): string {
   return value;
 }
 
+// Batas panjang kata sandi (WSTG-ATHN-07). scryptSync di bawah ini
+// komputasinya cukup berat secara sengaja (bagus untuk keamanan hash),
+// tapi itu juga berarti kalau tidak ada batas MAKSIMAL panjang input,
+// seseorang bisa mengirim payload password raksasa (mis. beberapa MB)
+// berulang kali untuk membebani CPU server (resource exhaustion / DoS).
+// 128 karakter jauh lebih dari cukup untuk kata sandi manusia normal
+// ataupun yang digenerate oleh password manager.
+export const MIN_PASSWORD_LENGTH = 8;
+export const MAX_PASSWORD_LENGTH = 128;
+
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
   const hash = scryptSync(password, salt, 64).toString("hex");

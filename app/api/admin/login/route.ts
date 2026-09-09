@@ -1,19 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminByUsername } from "@/lib/db";
-import { verifyPassword, createSessionToken } from "@/lib/auth";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { ensureSchema, getAdminByUsername, hitRateLimit, resetRateLimit } from "@/lib/db";
+import { verifyPassword, createSessionToken, MAX_PASSWORD_LENGTH } from "@/lib/auth";
+import { getClientIp } from "@/lib/rate-limit";
 
-// Maksimal 5 percobaan login per IP setiap 10 menit, untuk memperlambat
-// serangan brute-force / password guessing terhadap akun admin.
-const LOGIN_LIMIT = 5;
-const LOGIN_WINDOW_MS = 10 * 60 * 1000;
+// Maksimal percobaan login per IP dan per akun (username), dalam jendela
+// waktu yang sama. Keduanya dicek terpisah (WSTG-ATHN-03):
+//  - Limit per IP menahan satu penyerang yang mencoba banyak username dari
+//    alamat yang sama.
+//  - Limit per USERNAME (account-level lockout) menahan penyerang yang
+//    menyebar percobaan dari banyak IP/botnet ke SATU akun spesifik --
+//    yang tidak akan terhalang kalau cuma ada limit per-IP.
+const IP_LIMIT = 8;
+const USERNAME_LIMIT = 5;
+const WINDOW_MS = 10 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureSchema();
+
     const ip = getClientIp(req);
-    const { allowed, retryAfterMs } = rateLimit(`login:${ip}`, LOGIN_LIMIT, LOGIN_WINDOW_MS);
-    if (!allowed) {
-      const retryAfterSec = Math.ceil(retryAfterMs / 1000);
+    const ipCheck = await hitRateLimit(`login:ip:${ip}`, IP_LIMIT, WINDOW_MS);
+    if (!ipCheck.allowed) {
+      const retryAfterSec = Math.ceil(ipCheck.retryAfterMs / 1000);
       return NextResponse.json(
         { error: `Terlalu banyak percobaan login. Coba lagi dalam ${Math.ceil(retryAfterSec / 60)} menit.` },
         { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
@@ -25,10 +33,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Username dan kata sandi wajib diisi." }, { status: 400 });
     }
 
-    const admin = await getAdminByUsername(String(username).trim().toLowerCase());
+    // WSTG-ATHN-07: tolak lebih dulu SEBELUM masuk ke scryptSync (yang mahal
+    // secara komputasi), supaya payload password raksasa tidak bisa dipakai
+    // untuk membebani CPU server (resource exhaustion / DoS).
+    if (String(password).length > MAX_PASSWORD_LENGTH) {
+      return NextResponse.json({ error: "Kata sandi tidak valid." }, { status: 400 });
+    }
+
+    const normalizedUsername = String(username).trim().toLowerCase();
+    const userCheck = await hitRateLimit(`login:user:${normalizedUsername}`, USERNAME_LIMIT, WINDOW_MS);
+    if (!userCheck.allowed) {
+      const retryAfterSec = Math.ceil(userCheck.retryAfterMs / 1000);
+      return NextResponse.json(
+        { error: `Terlalu banyak percobaan login. Coba lagi dalam ${Math.ceil(retryAfterSec / 60)} menit.` },
+        { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
+      );
+    }
+
+    const admin = await getAdminByUsername(normalizedUsername);
     if (!admin || !verifyPassword(password, admin.password_hash)) {
       return NextResponse.json({ error: "Username atau kata sandi salah." }, { status: 401 });
     }
+
+    // Login berhasil -> hapus jejak percobaan gagal sebelumnya supaya tidak
+    // ikut menumpuk ke arah lockout berikutnya.
+    await resetRateLimit(`login:ip:${ip}`);
+    await resetRateLimit(`login:user:${normalizedUsername}`);
 
     const token = createSessionToken({
       username: admin.username,

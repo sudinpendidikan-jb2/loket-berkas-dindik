@@ -32,6 +32,7 @@ export default function AdminDashboard() {
   const [me, setMe] = useState<{ nama: string; initials: string } | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [showAddPetugas, setShowAddPetugas] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000 * 30);
@@ -122,6 +123,10 @@ export default function AdminDashboard() {
                   Tambah petugas
                 </button>{" "}
                 &middot;{" "}
+                <button onClick={() => setShowChangePassword((v) => !v)} className="underline hover:text-navy">
+                  Ubah kata sandi
+                </button>{" "}
+                &middot;{" "}
                 <button onClick={logout} className="underline hover:text-navy">
                   Keluar
                 </button>
@@ -142,6 +147,12 @@ export default function AdminDashboard() {
         {showAddPetugas && (
           <div className="print:hidden">
             <AddPetugasForm onDone={() => setShowAddPetugas(false)} />
+          </div>
+        )}
+
+        {showChangePassword && (
+          <div className="print:hidden">
+            <ChangePasswordForm onDone={() => setShowChangePassword(false)} />
           </div>
         )}
 
@@ -304,6 +315,89 @@ function GuestRow({
   );
 }
 
+function ChangePasswordForm({ onDone }: { onDone: () => void }) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (newPassword !== confirmPassword) {
+      setError("Konfirmasi kata sandi baru tidak cocok.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Gagal mengganti kata sandi.");
+        return;
+      }
+      setSuccess(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-4 grid gap-3 border border-line bg-white p-4 sm:grid-cols-3">
+      <input
+        required
+        type="password"
+        maxLength={128}
+        placeholder="Kata sandi saat ini"
+        value={currentPassword}
+        onChange={(e) => setCurrentPassword(e.target.value)}
+        className="border border-line rounded px-2.5 py-1.5 text-sm"
+      />
+      <input
+        required
+        type="password"
+        minLength={8}
+        maxLength={128}
+        placeholder="Kata sandi baru (min. 8 karakter)"
+        value={newPassword}
+        onChange={(e) => setNewPassword(e.target.value)}
+        className="border border-line rounded px-2.5 py-1.5 text-sm"
+      />
+      <input
+        required
+        type="password"
+        minLength={8}
+        maxLength={128}
+        placeholder="Ulangi kata sandi baru"
+        value={confirmPassword}
+        onChange={(e) => setConfirmPassword(e.target.value)}
+        className="border border-line rounded px-2.5 py-1.5 text-sm"
+      />
+      <div className="flex items-center gap-3 sm:col-span-3">
+        <button type="submit" disabled={loading} className="bg-navy text-paper text-sm px-4 py-1.5 rounded hover:bg-navy-light disabled:opacity-60">
+          {loading ? "Menyimpan..." : "Ganti kata sandi"}
+        </button>
+        <button type="button" onClick={onDone} className="text-sm text-ink/60 hover:text-ink">Tutup</button>
+        {error && <span className="text-sm text-rust">{error}</span>}
+        {success && <span className="text-sm text-moss">Kata sandi berhasil diganti.</span>}
+      </div>
+    </form>
+  );
+}
+
 function AddPetugasForm({ onDone }: { onDone: () => void }) {
   const [form, setForm] = useState({ nama: "", initials: "", username: "", password: "" });
   const [error, setError] = useState<string | null>(null);
@@ -343,7 +437,7 @@ function AddPetugasForm({ onDone }: { onDone: () => void }) {
       <input required placeholder="Nama lengkap" value={form.nama} onChange={(e) => update("nama", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm sm:col-span-2" />
       <input required maxLength={4} placeholder="Inisial (YAS)" value={form.initials} onChange={(e) => update("initials", e.target.value.toUpperCase())} className="border border-line rounded px-2.5 py-1.5 text-sm uppercase" />
       <input required placeholder="Username" value={form.username} onChange={(e) => update("username", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm" />
-      <input required type="password" minLength={8} placeholder="Kata sandi" value={form.password} onChange={(e) => update("password", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm" />
+      <input required type="password" minLength={8} maxLength={128} placeholder="Kata sandi" value={form.password} onChange={(e) => update("password", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm" />
       <div className="flex items-center gap-3 sm:col-span-5">
         <button type="submit" disabled={loading} className="bg-navy text-paper text-sm px-4 py-1.5 rounded hover:bg-navy-light disabled:opacity-60">
           {loading ? "Menyimpan..." : "Tambah petugas"}

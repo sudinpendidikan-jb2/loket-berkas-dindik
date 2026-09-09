@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureSchema, createFirstAdminIfNone } from "@/lib/db";
-import { hashPassword, createSessionToken, validateUsername } from "@/lib/auth";
+import { hashPassword, createSessionToken, validateUsername, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,8 +16,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: usernameCheck.error }, { status: 400 });
     }
 
-    if (String(password).length < 8) {
-      return NextResponse.json({ error: "Kata sandi minimal 8 karakter." }, { status: 400 });
+    if (String(password).length < MIN_PASSWORD_LENGTH || String(password).length > MAX_PASSWORD_LENGTH) {
+      return NextResponse.json(
+        { error: `Kata sandi harus ${MIN_PASSWORD_LENGTH}-${MAX_PASSWORD_LENGTH} karakter.` },
+        { status: 400 }
+      );
     }
 
     // Rute ini hanya boleh dipakai sekali, waktu belum ada petugas sama

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminByUsername, createAdmin } from "@/lib/db";
-import { getSession, hashPassword, validateUsername } from "@/lib/auth";
+import { getSession, hashPassword, validateUsername, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   const session = getSession();
@@ -19,8 +19,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: usernameCheck.error }, { status: 400 });
     }
 
-    if (String(password).length < 8) {
-      return NextResponse.json({ error: "Kata sandi minimal 8 karakter." }, { status: 400 });
+    if (String(password).length < MIN_PASSWORD_LENGTH || String(password).length > MAX_PASSWORD_LENGTH) {
+      return NextResponse.json(
+        { error: `Kata sandi harus ${MIN_PASSWORD_LENGTH}-${MAX_PASSWORD_LENGTH} karakter.` },
+        { status: 400 }
+      );
     }
 
     const exists = await getAdminByUsername(usernameCheck.value);
