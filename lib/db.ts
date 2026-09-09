@@ -35,45 +35,12 @@ export interface Admin {
 }
 
 <<<<<<< HEAD
-// ensureSchema() menjalankan DDL (CREATE TABLE / ALTER TABLE) yang sifatnya
-// idempoten, tapi tetap mahal kalau dieksekusi ulang di SETIAP request publik
-// (form tamu, status admin, dsb). Di lingkungan serverless tiap instance
-// fungsi baru akan menjalankannya sekali (saat cold start pertama), lalu
-// memori instance yang sama akan melewatinya selama instance itu hidup.
-let schemaEnsured: Promise<void> | null = null;
-
-export async function ensureSchema() {
-  if (!schemaEnsured) {
-    schemaEnsured = runEnsureSchema().catch((err) => {
-      // Kalau gagal, jangan simpan promise yang gagal - biar percobaan
-      // berikutnya boleh mencoba lagi (mis. DB sempat down sesaat).
-      schemaEnsured = null;
-      throw err;
-    });
-  }
-  return schemaEnsured;
-}
-
+// ensureSchema() menjalankan DDL ...
+...
 async function runEnsureSchema() {
 =======
-// ensureSchema() dipanggil di beberapa API route setiap ada request masuk,
-// termasuk sekarang endpoint login (untuk memastikan tabel rate_limits
-// ada). Supaya tidak mengulang ~10 query CREATE/ALTER di setiap request,
-// hasilnya di-cache per instance server — request pertama (cold start)
-// yang menanggung biayanya, request berikutnya di instance yang sama
-// langsung skip. Kalau sempat gagal, cache direset supaya boleh dicoba lagi.
-let schemaReadyPromise: Promise<void> | null = null;
-
-export function ensureSchema(): Promise<void> {
-  if (!schemaReadyPromise) {
-    schemaReadyPromise = runSchemaMigrations().catch((err) => {
-      schemaReadyPromise = null;
-      throw err;
-    });
-  }
-  return schemaReadyPromise;
-}
-
+// ensureSchema() dipanggil di beberapa API route ...
+...
 async function runSchemaMigrations(): Promise<void> {
 >>>>>>> 69c12d67d8cf2038688a86594020f80e7fbb56ed
   await sql`
