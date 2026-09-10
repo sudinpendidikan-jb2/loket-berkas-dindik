@@ -1,6 +1,15 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 
+// Batas panjang kata sandi - dipakai bersama oleh /api/admin/login,
+// /api/admin/change-password, dll, supaya aturannya konsisten di satu
+// tempat. MAX di sini disamakan dengan batas yang sudah dipakai di
+// /api/admin/login (mencegah payload password raksasa membebani scrypt -
+// WSTG-ATHN-07); MIN mengikuti kebijakan kata sandi minimal 8 karakter.
+export const MIN_PASSWORD_LENGTH = 8;
+export const MAX_PASSWORD_LENGTH = 200;
+
+
 // SESSION_SECRET dipakai untuk menandatangani cookie sesi admin, supaya
 // orang lain tidak bisa memalsukan cookie tanpa tahu secret ini.
 // Set di Vercel Environment Variables (string acak, minimal 32 karakter),

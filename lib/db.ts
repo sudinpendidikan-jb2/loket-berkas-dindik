@@ -188,3 +188,12 @@ export async function createAdmin(input: {
   `;
   return rows[0] as unknown as Admin;
 }
+
+/**
+ * Mengganti password_hash admin berdasarkan username. Dipakai oleh
+ * /api/admin/change-password (WSTG-ATHN-08) - endpoint itu sendiri yang
+ * sudah memverifikasi kata sandi lama sebelum memanggil fungsi ini.
+ */
+export async function updateAdminPassword(username: string, passwordHash: string): Promise<void> {
+  await sql`UPDATE admins SET password_hash = ${passwordHash} WHERE username = ${username};`;
+}

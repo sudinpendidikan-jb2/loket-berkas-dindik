@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ensureSchema, getAdminByUsername, updateAdminPassword, hitRateLimit } from "@/lib/db";
+import { ensureSchema, getAdminByUsername, updateAdminPassword } from "@/lib/db";
 import { getSession, verifyPassword, hashPassword, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 // WSTG-ATHN-08: sebelumnya tidak ada cara bagi petugas untuk mengganti kata
 // sandinya sendiri -- kalau akun bocor/dicurigai, satu-satunya jalan adalah
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
   try {
     await ensureSchema();
 
-    const check = await hitRateLimit(`changepw:${session.username}`, ATTEMPT_LIMIT, WINDOW_MS);
+    const check = rateLimit(`changepw:${session.username}`, ATTEMPT_LIMIT, WINDOW_MS);
     if (!check.allowed) {
       const retryAfterSec = Math.ceil(check.retryAfterMs / 1000);
       return NextResponse.json(
