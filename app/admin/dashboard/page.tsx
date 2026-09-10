@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { STATUS_LABEL, KEPERLUAN_OPTIONS } from "@/lib/constants";
 import type { Guest, GuestStatus } from "@/lib/db";
@@ -33,6 +33,18 @@ export default function AdminDashboard() {
   const [now, setNow] = useState(() => new Date());
   const [showAddPetugas, setShowAddPetugas] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000 * 30);
@@ -116,21 +128,58 @@ export default function AdminDashboard() {
               {now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
             </p>
             {me && (
-              <p className="mt-1 text-ink/60">
-                Login: <span className="font-medium text-ink">{me.nama.toUpperCase()}</span>{" "}
-                &middot;{" "}
-                <button onClick={() => setShowAddPetugas((v) => !v)} className="underline hover:text-navy">
-                  Tambah petugas
-                </button>{" "}
-                &middot;{" "}
-                <button onClick={() => setShowChangePassword((v) => !v)} className="underline hover:text-navy">
-                  Ubah kata sandi
-                </button>{" "}
-                &middot;{" "}
-                <button onClick={logout} className="underline hover:text-navy">
-                  Keluar
+              <div className="relative mt-1 inline-block text-left" ref={profileMenuRef}>
+                <button
+                  onClick={() => setShowProfileMenu((v) => !v)}
+                  className="flex items-center gap-2 rounded-full border border-line bg-white py-1 pl-1 pr-3 text-ink/80 hover:border-navy/40 hover:text-navy"
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy text-[11px] font-semibold text-paper">
+                    {me.initials}
+                  </span>
+                  <span className="font-medium">{me.nama}</span>
+                  <svg
+                    className={`h-3.5 w-3.5 text-ink/40 transition-transform ${showProfileMenu ? "rotate-180" : ""}`}
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
                 </button>
-              </p>
+
+                {showProfileMenu && (
+                  <div className="absolute right-0 z-20 mt-2 w-48 origin-top-right rounded-md border border-line bg-white py-1 shadow-lg">
+                    <button
+                      onClick={() => {
+                        setShowAddPetugas((v) => !v);
+                        setShowProfileMenu(false);
+                      }}
+                      className="block w-full px-4 py-2 text-left text-sm text-ink hover:bg-navy/5"
+                    >
+                      Tambah petugas
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowChangePassword((v) => !v);
+                        setShowProfileMenu(false);
+                      }}
+                      className="block w-full px-4 py-2 text-left text-sm text-ink hover:bg-navy/5"
+                    >
+                      Ubah kata sandi
+                    </button>
+                    <div className="my-1 border-t border-line" />
+                    <button
+                      onClick={logout}
+                      className="block w-full px-4 py-2 text-left text-sm text-rust hover:bg-rust/5"
+                    >
+                      Keluar
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </header>
