@@ -3,8 +3,27 @@ import { cookies } from "next/headers";
 
 // SESSION_SECRET dipakai untuk menandatangani cookie sesi admin, supaya
 // orang lain tidak bisa memalsukan cookie tanpa tahu secret ini.
-// Set di Vercel Environment Variables (string acak, minimal 32 karakter).
-const SESSION_SECRET = process.env.SESSION_SECRET ?? "";
+// Set di Vercel Environment Variables (string acak, minimal 32 karakter),
+// misalnya lewat: openssl rand -hex 32
+//
+// PENTING: pengecekan ini sengaja dibuat "lazy" (baru jalan saat fungsi di
+// bawah dipanggil), BUKAN dijalankan langsung saat file ini di-import.
+// Kalau dijalankan saat import, proses `next build` di Vercel akan ikut
+// meng-import file ini untuk mengumpulkan data halaman — dan build akan
+// gagal walau env var-nya sudah benar di runtime, karena env var belum
+// tentu tersedia di tahap build. Dengan lazy check, build tetap jalan,
+// tapi aplikasi tetap menolak berjalan (error jelas) kalau secret belum
+// diset saat benar-benar dipakai untuk membuat/verifikasi sesi.
+function requireSessionSecret(): string {
+  const value = process.env.SESSION_SECRET;
+  if (!value || value.trim().length < 32) {
+    throw new Error(
+      "SESSION_SECRET belum diset atau kurang dari 32 karakter. " +
+        "Set env var SESSION_SECRET (contoh: `openssl rand -hex 32`) di Environment Variables."
+    );
+  }
+  return value;
+}
 
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
@@ -33,8 +52,9 @@ function b64url(input: string): string {
 }
 
 export function createSessionToken(payload: SessionPayload): string {
+  const secret = requireSessionSecret();
   const body = b64url(JSON.stringify(payload));
-  const sig = createHmac("sha256", SESSION_SECRET).update(body).digest("base64url");
+  const sig = createHmac("sha256", secret).update(body).digest("base64url");
   return `${body}.${sig}`;
 }
 
@@ -43,7 +63,8 @@ export function verifySessionToken(token: string | undefined | null): SessionPay
   const [body, sig] = token.split(".");
   if (!body || !sig) return null;
 
-  const expected = createHmac("sha256", SESSION_SECRET).update(body).digest("base64url");
+  const secret = requireSessionSecret();
+  const expected = createHmac("sha256", secret).update(body).digest("base64url");
   const sigBuf = Buffer.from(sig);
   const expBuf = Buffer.from(expected);
   if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) return null;

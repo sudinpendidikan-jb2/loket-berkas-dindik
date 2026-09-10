@@ -19,5 +19,10 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/dashboard"],
+  // Termasuk subrute (mis. /admin/dashboard/apapun) supaya gerbang cepat ini
+  // tidak lubang kalau nanti ditambah halaman baru di bawah /admin/dashboard.
+  // Verifikasi tanda tangan sesi yang sesungguhnya tetap ada di setiap API
+  // route lewat getSession() (lib/auth.ts), jadi ini lapisan tambahan, bukan
+  // satu-satunya penjaga.
+  matcher: ["/admin/dashboard", "/admin/dashboard/:path*"],
 };

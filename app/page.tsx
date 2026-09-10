@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KEPERLUAN_OPTIONS } from "@/lib/constants";
-import { MonasBackdrop, StampMark } from "@/components/brand";
+import { KEPERLUAN_OPTIONS, INSTANSI_OPTIONS } from "@/lib/constants";
+import { MonasBackdrop, AgencyLogos } from "@/components/brand";
 
 const MUTASI_KEPERLUAN = ["Mutasi masuk siswa", "Mutasi keluar siswa"];
 
@@ -14,13 +14,14 @@ interface GuestResult {
 
 const initialForm = {
   nama: "",
-  asal_instansi: "",
+  asal_instansi: INSTANSI_OPTIONS[0],
   no_hp: "",
-  keperluan: KEPERLUAN_OPTIONS[0],
+  keperluan: "Lainnya",
   nama_siswa: "",
   sekolah_asal: "",
   sekolah_tujuan: "",
   catatan: "",
+  website: "", // honeypot anti-bot: field ini harus selalu kosong
 };
 
 export default function GuestFormPage() {
@@ -91,32 +92,42 @@ export default function GuestFormPage() {
     <main className="relative min-h-screen overflow-hidden bg-[#0E1830]">
       <MonasBackdrop />
 
-      <div className="relative z-10 mx-auto max-w-5xl px-6 py-12 md:py-16">
-        <header className="flex items-center gap-3 text-paper">
-          <StampMark />
+      <div className="relative z-10 mx-auto max-w-5xl px-6 pb-12 pt-8 md:pb-16 md:pt-10">
+        <header className="flex items-center gap-3 text-paper sm:gap-4">
+          <AgencyLogos />
+          <div className="hidden h-9 w-px bg-paper/20 sm:block" />
           <div>
-            <p className="font-serif text-lg leading-tight">Dinas Pendidikan</p>
-            <p className="text-sm text-paper/60 leading-tight">Buku Tamu Digital</p>
+            <p className="font-serif text-lg leading-snug">Dinas Pendidikan</p>
+            <p className="text-sm text-paper/60 leading-snug">Buku Tamu Digital</p>
           </div>
         </header>
 
-        <div className="mt-14 grid gap-10 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:mt-20">
-          <div className="text-paper md:pt-4">
-            <p className="text-sm tracking-wide text-gold-light/90">Selamat datang</p>
-            <h1 className="mt-2 font-serif text-4xl leading-tight md:text-[2.75rem]">
-              Silakan catat kunjungan Anda.
-            </h1>
-            <p className="mt-4 max-w-sm leading-relaxed text-paper/70">
-              Isi data di samping sebelum menunggu dipanggil petugas. Waktu
-              kedatangan Anda tercatat otomatis begitu formulir dikirim.
-            </p>
-          </div>
+        <h1 className="mx-auto mt-10 max-w-2xl text-center font-serif text-2xl leading-tight text-paper sm:text-3xl md:mt-14 md:text-4xl">
+          Daftar Kunjungan Tamu Suku Dinas Pendidikan Wilayah II Kota Administrasi Jakarta Barat
+        </h1>
 
+        <div className="mt-10 flex justify-center md:mt-14">
           <form
             onSubmit={handleSubmit}
-            className="rounded-lg border border-gold-light/20 bg-white/95 p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur sm:p-8"
+            className="w-full rounded-lg border border-gold-light/20 bg-white/95 p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur sm:p-8 md:max-w-md"
           >
             <p className="mb-6 font-serif text-xl text-navy">Data Kunjungan</p>
+
+            {/* Honeypot anti-bot: disembunyikan dari manusia lewat CSS,
+               tapi tetap terlihat oleh bot pengisi-form otomatis. Jangan
+               pakai `type="hidden"` karena beberapa bot melewatinya. */}
+            <div className="absolute -left-[9999px] top-auto" aria-hidden="true">
+              <label>
+                Website
+                <input
+                  type="text"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={form.website}
+                  onChange={(e) => update("website", e.target.value)}
+                />
+              </label>
+            </div>
 
             <div className="space-y-5">
               <Field label="Nama lengkap">
@@ -140,14 +151,16 @@ export default function GuestFormPage() {
                 />
               </Field>
 
-              <Field label="Asal instansi / sekolah">
-                <input
-                  required
+              <Field label="Instansi">
+                <select
                   value={form.asal_instansi}
                   onChange={(e) => update("asal_instansi", e.target.value)}
                   className="input"
-                  placeholder="Contoh: SDN 02 Menteng"
-                />
+                >
+                  {INSTANSI_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
               </Field>
 
               <Field label="Keperluan kunjungan">
@@ -225,10 +238,16 @@ export default function GuestFormPage() {
               <p className="mt-4 border-l-2 border-rust pl-3 text-sm text-rust">{error}</p>
             )}
 
+            <p className="mt-4 text-xs leading-relaxed text-ink/50">
+              Data yang Anda isikan hanya digunakan untuk keperluan pencatatan kunjungan
+              dan layanan di loket Sudin Pendidikan, serta tidak dibagikan ke pihak lain
+              di luar keperluan tersebut.
+            </p>
+
             <button
               type="submit"
               disabled={submitting}
-              className="mt-8 w-full rounded bg-navy py-3 font-medium text-paper transition-colors hover:bg-navy-light disabled:opacity-60"
+              className="mt-4 w-full rounded bg-navy py-3 font-medium text-paper transition-colors hover:bg-navy-light disabled:opacity-60"
             >
               {submitting ? "Menyimpan..." : "Kirim data kunjungan"}
             </button>

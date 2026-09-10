@@ -1,13 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureSchema, insertGuest, listGuests } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { NO_STORE_HEADERS } from "@/lib/http";
+import { KEPERLUAN_OPTIONS, INSTANSI_OPTIONS } from "@/lib/constants";
 
 const MUTASI_KEPERLUAN = ["Mutasi masuk siswa", "Mutasi keluar siswa"];
 
+// Nomor HP Indonesia: boleh diawali +62/62/0, lalu 8-13 digit lagi setelah
+// awalan "8". Cukup longgar untuk menampung variasi operator, tapi menolak
+// input yang jelas bukan nomor telepon.
+const PHONE_REGEX = /^(\+62|62|0)8[0-9]{7,12}$/;
+
+// Form ini publik (tanpa login), jadi butuh perlindungan dasar dari spam/bot:
+// - rate limit per IP
+// - honeypot field ("website") yang harus kosong; bot pengisi-otomatis
+//   biasanya mengisi semua field yang mereka temukan di HTML
+// - batas panjang tiap field, supaya tidak ada yang mengirim payload raksasa
+const SUBMIT_LIMIT = 5;
+const SUBMIT_WINDOW_MS = 5 * 60 * 1000;
+const MAX_FIELD_LENGTH = 300;
+const MAX_NOTE_LENGTH = 1000;
+
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIp(req);
+    const { allowed, retryAfterMs } = rateLimit(`guest-submit:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS);
+    if (!allowed) {
+      const retryAfterSec = Math.ceil(retryAfterMs / 1000);
+      return NextResponse.json(
+        { error: "Terlalu banyak pengiriman dari perangkat ini. Coba lagi sebentar lagi." },
+        { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
+      );
+    }
+
     await ensureSchema();
     const body = await req.json();
+
+    // Honeypot: field tersembunyi di form yang tidak boleh diisi manusia.
+    // Kalau terisi, kemungkinan besar ini bot -> tolak diam-diam (200 palsu
+    // supaya bot tidak tahu ditolak, tapi data TIDAK disimpan).
+    if (body.website) {
+      return NextResponse.json({ guest: null }, { status: 201 });
+    }
 
     const required = ["nama", "asal_instansi", "no_hp", "keperluan"];
     for (const field of required) {
@@ -17,6 +52,28 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+      if (String(body[field]).length > MAX_FIELD_LENGTH) {
+        return NextResponse.json(
+          { error: `Kolom "${field}" terlalu panjang.` },
+          { status: 400 }
+        );
+      }
+    }
+    if (body.catatan && String(body.catatan).length > MAX_NOTE_LENGTH) {
+      return NextResponse.json({ error: "Keterangan tambahan terlalu panjang." }, { status: 400 });
+    }
+
+    // Validasi opsi terhadap daftar resmi di lib/constants.ts, bukan cuma
+    // "field tidak kosong". Tanpa ini, request langsung ke API (di luar UI
+    // dropdown) bisa menyisipkan nilai bebas untuk asal_instansi/keperluan.
+    if (!INSTANSI_OPTIONS.includes(body.asal_instansi)) {
+      return NextResponse.json({ error: "Asal instansi tidak valid." }, { status: 400 });
+    }
+    if (!KEPERLUAN_OPTIONS.includes(body.keperluan)) {
+      return NextResponse.json({ error: "Keperluan tidak valid." }, { status: 400 });
+    }
+    if (!PHONE_REGEX.test(String(body.no_hp).trim())) {
+      return NextResponse.json({ error: "Format nomor HP tidak valid." }, { status: 400 });
     }
 
     if (MUTASI_KEPERLUAN.includes(body.keperluan)) {
@@ -54,7 +111,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   if (!getSession()) {
-    return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401 });
+    return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401, headers: NO_STORE_HEADERS });
   }
 
   try {
@@ -65,7 +122,9 @@ export async function GET(req: NextRequest) {
       status: searchParams.get("status") ?? undefined,
       q: searchParams.get("q") ?? undefined,
     });
-    return NextResponse.json({ guests });
+    // Data tamu bersifat sensitif (nama, no. HP, keperluan) - jangan sampai
+    // tersimpan di cache browser/proxy setelah admin melihatnya.
+    return NextResponse.json({ guests }, { headers: NO_STORE_HEADERS });
   } catch (err) {
     console.error(err);
     return NextResponse.json(

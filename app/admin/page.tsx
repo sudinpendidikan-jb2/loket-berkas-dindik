@@ -2,18 +2,30 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MonasBackdrop, StampMark } from "@/components/brand";
+import { MonasBackdrop, AgencyLogos } from "@/components/brand";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
   const [hasAdmins, setHasAdmins] = useState(true);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/status")
-      .then((res) => res.json())
-      .then((data) => setHasAdmins(Boolean(data.hasAdmins)))
-      .catch(() => setHasAdmins(true))
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          // Gagal memuat status (mis. koneksi DB sempat bermasalah) — JANGAN
+          // anggap belum ada admin. Default ke form login supaya tidak
+          // memicu "buat akun pertama" secara keliru saat admin sudah ada.
+          throw new Error(data.error ?? "Gagal memuat status.");
+        }
+        setHasAdmins(Boolean(data.hasAdmins));
+      })
+      .catch((err) => {
+        setHasAdmins(true);
+        setStatusError(err.message ?? "Gagal memuat status.");
+      })
       .finally(() => setChecking(false));
   }, []);
 
@@ -22,8 +34,8 @@ export default function AdminLoginPage() {
       <MonasBackdrop />
 
       <div className="relative z-10 w-full max-w-sm">
-        <div className="mb-6 flex items-center gap-3 text-paper">
-          <StampMark />
+        <div className="mb-6 flex flex-col items-center gap-3 text-paper text-center">
+          <AgencyLogos />
           <div>
             <p className="font-serif text-lg leading-tight">Dinas Pendidikan</p>
             <p className="text-sm text-paper/60 leading-tight">Buku Tamu Digital</p>
@@ -34,10 +46,19 @@ export default function AdminLoginPage() {
           <div className="rounded-lg border border-gold-light/20 bg-white/95 p-8 text-center text-sm text-ink/50 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur">
             Memuat...
           </div>
-        ) : hasAdmins ? (
-          <LoginForm onSuccess={() => { router.push("/admin/dashboard"); router.refresh(); }} />
         ) : (
-          <SetupForm onSuccess={() => { router.push("/admin/dashboard"); router.refresh(); }} />
+          <>
+            {statusError && (
+              <p className="mb-3 rounded border-l-2 border-rust bg-white/90 px-3 py-2 text-sm text-rust">
+                Gagal mengecek status akun ({statusError}). Menampilkan form login.
+              </p>
+            )}
+            {hasAdmins ? (
+              <LoginForm onSuccess={() => { router.push("/admin/dashboard"); router.refresh(); }} />
+            ) : (
+              <SetupForm onSuccess={() => { router.push("/admin/dashboard"); router.refresh(); }} />
+            )}
+          </>
         )}
       </div>
 
@@ -210,11 +231,11 @@ function SetupForm({ onSuccess }: { onSuccess: () => void }) {
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm text-ink/70">Kata sandi (minimal 6 karakter)</span>
+          <span className="mb-1.5 block text-sm text-ink/70">Kata sandi (minimal 8 karakter)</span>
           <input
             type="password"
             required
-            minLength={6}
+            minLength={8}
             value={form.password}
             onChange={(e) => update("password", e.target.value)}
             className="admin-input"
