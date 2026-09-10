@@ -32,6 +32,7 @@ export default function AdminDashboard() {
   const [me, setMe] = useState<{ nama: string; initials: string } | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [showAddPetugas, setShowAddPetugas] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000 * 30);
@@ -122,6 +123,10 @@ export default function AdminDashboard() {
                   Tambah petugas
                 </button>{" "}
                 &middot;{" "}
+                <button onClick={() => setShowChangePassword((v) => !v)} className="underline hover:text-navy">
+                  Ubah kata sandi
+                </button>{" "}
+                &middot;{" "}
                 <button onClick={logout} className="underline hover:text-navy">
                   Keluar
                 </button>
@@ -142,6 +147,12 @@ export default function AdminDashboard() {
         {showAddPetugas && (
           <div className="print:hidden">
             <AddPetugasForm onDone={() => setShowAddPetugas(false)} />
+          </div>
+        )}
+
+        {showChangePassword && (
+          <div className="print:hidden">
+            <ChangePasswordForm onDone={() => setShowChangePassword(false)} />
           </div>
         )}
 
@@ -356,3 +367,94 @@ function AddPetugasForm({ onDone }: { onDone: () => void }) {
   );
 }
 
+
+function ChangePasswordForm({ onDone }: { onDone: () => void }) {
+  const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  function update<K extends keyof typeof form>(key: K, value: string) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (form.newPassword !== form.confirmPassword) {
+      setError("Konfirmasi kata sandi baru tidak cocok.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: form.currentPassword,
+          newPassword: form.newPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Gagal mengganti kata sandi.");
+        return;
+      }
+      setSuccess(true);
+      setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-4 grid gap-3 border border-line bg-white p-4 sm:grid-cols-4">
+      <input
+        required
+        type="password"
+        placeholder="Kata sandi saat ini"
+        value={form.currentPassword}
+        onChange={(e) => update("currentPassword", e.target.value)}
+        className="border border-line rounded px-2.5 py-1.5 text-sm"
+      />
+      <input
+        required
+        type="password"
+        minLength={8}
+        placeholder="Kata sandi baru"
+        value={form.newPassword}
+        onChange={(e) => update("newPassword", e.target.value)}
+        className="border border-line rounded px-2.5 py-1.5 text-sm"
+      />
+      <input
+        required
+        type="password"
+        minLength={8}
+        placeholder="Ulangi kata sandi baru"
+        value={form.confirmPassword}
+        onChange={(e) => update("confirmPassword", e.target.value)}
+        className="border border-line rounded px-2.5 py-1.5 text-sm"
+      />
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={loading}
+          className="bg-navy text-paper text-sm px-4 py-1.5 rounded hover:bg-navy-light disabled:opacity-60"
+        >
+          {loading ? "Menyimpan..." : "Simpan"}
+        </button>
+        <button type="button" onClick={onDone} className="text-sm text-ink/60 hover:text-ink">
+          Tutup
+        </button>
+      </div>
+      {error && <span className="text-sm text-rust sm:col-span-4">{error}</span>}
+      {success && (
+        <span className="text-sm text-moss sm:col-span-4">Kata sandi berhasil diganti.</span>
+      )}
+    </form>
+  );
+}
