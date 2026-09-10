@@ -194,15 +194,15 @@ export default function AdminDashboard() {
         />
 
         {showAddPetugas && (
-          <div className="print:hidden">
+          <Modal title="Tambah petugas" onClose={() => setShowAddPetugas(false)}>
             <AddPetugasForm onDone={() => setShowAddPetugas(false)} />
-          </div>
+          </Modal>
         )}
 
         {showChangePassword && (
-          <div className="print:hidden">
+          <Modal title="Ubah kata sandi" onClose={() => setShowChangePassword(false)}>
             <ChangePasswordForm onDone={() => setShowChangePassword(false)} />
-          </div>
+          </Modal>
         )}
 
         <div className="mt-6 grid grid-cols-3 divide-x divide-line border border-line print:hidden">
@@ -364,6 +364,47 @@ function GuestRow({
   );
 }
 
+function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  useEffect(() => {
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden">
+      {/* Backdrop - klik di luar kartu untuk menutup */}
+      <div className="absolute inset-0 bg-navy-dark/50 backdrop-blur-sm" onClick={onClose} />
+
+      <div className="relative w-full max-w-md rounded-lg border border-line bg-white p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.4)]">
+        <div className="mb-4 flex items-center justify-between border-b border-line pb-3">
+          <p className="font-serif text-lg text-navy">{title}</p>
+          <button
+            onClick={onClose}
+            aria-label="Tutup"
+            className="rounded-full p-1 text-ink/40 hover:bg-navy/5 hover:text-ink"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+            </svg>
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function AddPetugasForm({ onDone }: { onDone: () => void }) {
   const [form, setForm] = useState({ nama: "", initials: "", username: "", password: "" });
   const [error, setError] = useState<string | null>(null);
@@ -399,16 +440,15 @@ function AddPetugasForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 grid gap-3 border border-line bg-white p-4 sm:grid-cols-5">
+    <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2">
       <input required placeholder="Nama lengkap" value={form.nama} onChange={(e) => update("nama", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm sm:col-span-2" />
       <input required maxLength={4} placeholder="Inisial (YAS)" value={form.initials} onChange={(e) => update("initials", e.target.value.toUpperCase())} className="border border-line rounded px-2.5 py-1.5 text-sm uppercase" />
       <input required placeholder="Username" value={form.username} onChange={(e) => update("username", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm" />
       <input required type="password" minLength={8} placeholder="Kata sandi" value={form.password} onChange={(e) => update("password", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm" />
-      <div className="flex items-center gap-3 sm:col-span-5">
+      <div className="flex items-center gap-3 sm:col-span-2">
         <button type="submit" disabled={loading} className="bg-navy text-paper text-sm px-4 py-1.5 rounded hover:bg-navy-light disabled:opacity-60">
           {loading ? "Menyimpan..." : "Tambah petugas"}
         </button>
-        <button type="button" onClick={onDone} className="text-sm text-ink/60 hover:text-ink">Tutup</button>
         {error && <span className="text-sm text-rust">{error}</span>}
         {success && <span className="text-sm text-moss">Petugas baru berhasil ditambahkan.</span>}
       </div>
@@ -461,7 +501,7 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 grid gap-3 border border-line bg-white p-4 sm:grid-cols-4">
+    <form onSubmit={handleSubmit} className="grid gap-3">
       <input
         required
         type="password"
@@ -496,14 +536,9 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
         >
           {loading ? "Menyimpan..." : "Simpan"}
         </button>
-        <button type="button" onClick={onDone} className="text-sm text-ink/60 hover:text-ink">
-          Tutup
-        </button>
       </div>
-      {error && <span className="text-sm text-rust sm:col-span-4">{error}</span>}
-      {success && (
-        <span className="text-sm text-moss sm:col-span-4">Kata sandi berhasil diganti.</span>
-      )}
+      {error && <span className="text-sm text-rust">{error}</span>}
+      {success && <span className="text-sm text-moss">Kata sandi berhasil diganti.</span>}
     </form>
   );
 }
