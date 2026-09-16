@@ -109,7 +109,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="relative z-10 mx-auto max-w-5xl px-6">
-        <div className="rounded-lg border border-gold-light/20 bg-white/95 p-8 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur print:rounded-none print:border-0 print:bg-white print:p-0 print:shadow-none">
+        <div className="rounded-lg border border-gold-light/20 bg-white/95 p-8 shadow-panel backdrop-blur print:rounded-none print:border-0 print:bg-white print:p-0 print:shadow-none">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-navy pb-6 print:hidden">
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <AgencyLogos />
@@ -238,7 +238,7 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-line bg-paper/50 p-3 print:hidden">
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-line bg-paper/50 p-3 shadow-card print:hidden">
           <input
             type="date"
             value={date}
@@ -325,7 +325,7 @@ function StatCard({
 }) {
   const t = STAT_TONE[tone];
   return (
-    <div className={`flex items-center gap-4 rounded-lg border ${t.border} ${t.bg} px-5 py-4`}>
+    <div className={`flex items-center gap-4 rounded-lg border ${t.border} ${t.bg} px-5 py-4 shadow-card transition-shadow hover:shadow-card-hover`}>
       <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${t.icon}`}>
         <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
           {icon}
@@ -362,7 +362,7 @@ function GuestRow({
 
   return (
     <div
-      className={`flex flex-wrap items-start justify-between gap-3 rounded-md border border-line border-l-4 ${accent} bg-white px-4 py-3.5 shadow-sm transition-shadow hover:shadow-md print:rounded-none print:border-l print:shadow-none`}
+      className={`flex flex-wrap items-start justify-between gap-3 rounded-md border border-line border-l-4 ${accent} bg-white px-4 py-3.5 shadow-card transition-shadow hover:shadow-card-hover print:rounded-none print:border-l print:shadow-none`}
     >
       <div className="min-w-0">
         <p className="text-sm">
@@ -439,7 +439,7 @@ function Modal({
       {/* Backdrop - klik di luar kartu untuk menutup */}
       <div className="absolute inset-0 bg-navy-dark/50 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-md rounded-lg border border-line bg-white p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.4)]">
+      <div className="relative w-full max-w-md rounded-lg border border-line bg-white p-6 shadow-panel">
         <div className="mb-4 flex items-center justify-between border-b border-line pb-3">
           <p className="font-serif text-lg text-navy">{title}</p>
           <button

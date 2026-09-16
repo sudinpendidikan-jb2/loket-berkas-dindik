@@ -32,6 +32,11 @@ const config: Config = {
         sm: "3px",
         DEFAULT: "5px",
       },
+      boxShadow: {
+        card: "0 1px 2px rgba(27,42,74,0.06), 0 4px 10px -2px rgba(27,42,74,0.08)",
+        "card-hover": "0 2px 4px rgba(27,42,74,0.08), 0 10px 20px -4px rgba(27,42,74,0.14)",
+        panel: "0 1px 3px rgba(27,42,74,0.05), 0 20px 40px -20px rgba(27,42,74,0.25)",
+      },
     },
   },
   plugins: [],
