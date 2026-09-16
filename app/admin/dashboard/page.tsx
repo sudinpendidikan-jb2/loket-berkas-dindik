@@ -205,36 +205,56 @@ export default function AdminDashboard() {
           </Modal>
         )}
 
-        <div className="mt-6 grid grid-cols-3 divide-x divide-line border border-line print:hidden">
-          <StatCard value={total} label={isToday ? "Tamu hari ini" : "Tamu pada tanggal ini"} />
-          <StatCard value={sedangDilayani} label="Sedang dilayani" />
-          <StatCard value={selesaiDilayani} label="Selesai dilayani" />
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3 print:hidden">
+          <StatCard
+            value={total}
+            label={isToday ? "Tamu hari ini" : "Tamu pada tanggal ini"}
+            tone="navy"
+            icon={
+              <path d="M16 11a4 4 0 100-8 4 4 0 000 8zm-8 1a3 3 0 100-6 3 3 0 000 6zm8 2c-3.31 0-8 1.34-8 4v3h16v-3c0-2.66-4.69-4-8-4zm-8 1.09C5.79 15.5 3 16.61 3 18v3h3v-3c0-1.02.47-1.85 1-2.91z" />
+            }
+          />
+          <StatCard
+            value={sedangDilayani}
+            label="Sedang dilayani"
+            tone="gold"
+            icon={<path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 10.59l4.24 4.24-1.41 1.41L11 13V6h2v6.59z" />}
+          />
+          <StatCard
+            value={selesaiDilayani}
+            label="Selesai dilayani"
+            tone="moss"
+            icon={<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />}
+          />
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 print:hidden">
-          <p className="font-serif text-lg text-navy">Daftar Kehadiran</p>
+          <p className="flex items-center gap-2 font-serif text-lg text-navy">
+            <span className="h-5 w-1 rounded-full bg-gold" />
+            Daftar Kehadiran
+          </p>
           <p className="text-sm text-ink/50">
             {total} entri — {isToday ? "hari ini" : new Date(date).toLocaleDateString("id-ID", { dateStyle: "medium" })}
           </p>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-3 border-b border-line pb-5 print:hidden">
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-line bg-paper/50 p-3 print:hidden">
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="border border-line rounded px-2.5 py-1.5 text-sm"
+            className="border border-line rounded bg-white px-2.5 py-1.5 text-sm shadow-sm"
           />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="flex-1 min-w-40 border border-line rounded px-2.5 py-1.5 text-sm"
+            className="flex-1 min-w-40 border border-line rounded bg-white px-2.5 py-1.5 text-sm shadow-sm"
             placeholder="Cari nama tamu, siswa, atau sekolah..."
           />
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="border border-line rounded px-2.5 py-1.5 text-sm"
+            className="border border-line rounded bg-white px-2.5 py-1.5 text-sm shadow-sm"
           >
             <option value="">Semua status</option>
             {Object.entries(STATUS_LABEL).map(([val, label]) => (
@@ -243,25 +263,25 @@ export default function AdminDashboard() {
           </select>
           <button
             onClick={() => setDate(todayStr())}
-            className="text-sm border border-line rounded px-3 py-1.5 hover:bg-navy hover:text-paper hover:border-navy transition-colors"
+            className="text-sm border border-line rounded bg-white px-3 py-1.5 shadow-sm hover:bg-navy hover:text-paper hover:border-navy transition-colors"
           >
             Hari ini
           </button>
           <a
             href={`/api/guests/export${date ? `?date=${date}` : ""}`}
-            className="text-sm border border-navy text-navy rounded px-3 py-1.5 hover:bg-navy hover:text-paper transition-colors"
+            className="text-sm border border-navy text-navy rounded bg-white px-3 py-1.5 shadow-sm hover:bg-navy hover:text-paper transition-colors"
           >
             Unduh CSV
           </a>
           <button
             onClick={() => window.print()}
-            className="text-sm border border-navy text-navy rounded px-3 py-1.5 hover:bg-navy hover:text-paper transition-colors"
+            className="text-sm border border-navy text-navy rounded bg-white px-3 py-1.5 shadow-sm hover:bg-navy hover:text-paper transition-colors"
           >
             Cetak PDF
           </button>
         </div>
 
-        <div className="mt-4 divide-y divide-line">
+        <div className="mt-4 space-y-2.5">
           {loading && <p className="py-8 text-center text-sm text-ink/50">Memuat data...</p>}
           {!loading && guests.length === 0 && (
             <p className="py-8 text-center text-sm text-ink/50">Belum ada tamu pada filter ini.</p>
@@ -286,11 +306,35 @@ export default function AdminDashboard() {
   );
 }
 
-function StatCard({ value, label }: { value: number; label: string }) {
+const STAT_TONE = {
+  navy: { bg: "bg-navy/5", border: "border-navy/15", icon: "bg-navy text-paper", value: "text-navy" },
+  gold: { bg: "bg-gold/10", border: "border-gold/25", icon: "bg-gold-dark text-paper", value: "text-gold-dark" },
+  moss: { bg: "bg-moss/10", border: "border-moss/25", icon: "bg-moss text-paper", value: "text-moss" },
+} as const;
+
+function StatCard({
+  value,
+  label,
+  tone,
+  icon,
+}: {
+  value: number;
+  label: string;
+  tone: keyof typeof STAT_TONE;
+  icon: React.ReactNode;
+}) {
+  const t = STAT_TONE[tone];
   return (
-    <div className="px-6 py-5 text-center">
-      <p className="font-serif text-4xl text-navy">{value}</p>
-      <p className="mt-1 text-sm text-ink/60">{label}</p>
+    <div className={`flex items-center gap-4 rounded-lg border ${t.border} ${t.bg} px-5 py-4`}>
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${t.icon}`}>
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+          {icon}
+        </svg>
+      </span>
+      <div>
+        <p className={`font-serif text-3xl leading-none ${t.value}`}>{value}</p>
+        <p className="mt-1 text-sm text-ink/60">{label}</p>
+      </div>
     </div>
   );
 }
@@ -309,8 +353,17 @@ function GuestRow({
     ? new Date(guest.status_updated_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
     : null;
 
+  const accent =
+    guest.status === "selesai"
+      ? "border-l-moss"
+      : guest.status === "diproses"
+      ? "border-l-gold-dark"
+      : "border-l-line";
+
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3 py-4">
+    <div
+      className={`flex flex-wrap items-start justify-between gap-3 rounded-md border border-line border-l-4 ${accent} bg-white px-4 py-3.5 shadow-sm transition-shadow hover:shadow-md print:rounded-none print:border-l print:shadow-none`}
+    >
       <div className="min-w-0">
         <p className="text-sm">
           <span className="font-serif text-navy">#{index} {guest.nama}</span>{" "}
@@ -341,12 +394,12 @@ function GuestRow({
         <select
           value={guest.status}
           onChange={(e) => onStatusChange(guest.id, e.target.value as GuestStatus)}
-          className={`rounded px-2 py-1 text-xs border no-print ${
+          className={`rounded px-2 py-1 text-xs border font-medium no-print ${
             guest.status === "selesai"
-              ? "border-moss text-moss"
+              ? "border-moss/30 bg-moss/10 text-moss"
               : guest.status === "diproses"
-              ? "border-gold-dark text-gold-dark"
-              : "border-line text-ink/60"
+              ? "border-gold-dark/30 bg-gold/10 text-gold-dark"
+              : "border-line bg-paper/60 text-ink/60"
           }`}
         >
           {Object.entries(STATUS_LABEL).map(([val, label]) => (
