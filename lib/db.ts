@@ -193,14 +193,16 @@ export async function listGuests(filters: {
   date?: string;
   status?: string;
   q?: string;
+  instansi?: string;
 }): Promise<Guest[]> {
-  const { date, status, q } = filters;
+  const { date, status, q, instansi } = filters;
 
   const rows = await sql`
     SELECT * FROM guests
     WHERE
       (${date ?? null}::date IS NULL OR created_at::date = ${date ?? null}::date)
       AND (${status ?? null}::text IS NULL OR status = ${status ?? null}::text)
+      AND (${instansi ?? null}::text IS NULL OR asal_instansi = ${instansi ?? null}::text)
       AND (
         ${q ?? null}::text IS NULL
         OR nama ILIKE '%' || ${q ?? null}::text || '%'
