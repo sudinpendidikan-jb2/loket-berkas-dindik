@@ -406,7 +406,7 @@ function Modal({
 }
 
 function AddPetugasForm({ onDone }: { onDone: () => void }) {
-  const [form, setForm] = useState({ nama: "", initials: "", username: "", password: "" });
+  const [form, setForm] = useState({ nama: "", initials: "", username: "", password: "", email: "" });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -431,7 +431,7 @@ function AddPetugasForm({ onDone }: { onDone: () => void }) {
         return;
       }
       setSuccess(true);
-      setForm({ nama: "", initials: "", username: "", password: "" });
+      setForm({ nama: "", initials: "", username: "", password: "", email: "" });
     } catch {
       setError("Tidak bisa terhubung ke server.");
     } finally {
@@ -444,7 +444,8 @@ function AddPetugasForm({ onDone }: { onDone: () => void }) {
       <input required placeholder="Nama lengkap" value={form.nama} onChange={(e) => update("nama", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm sm:col-span-2" />
       <input required maxLength={4} placeholder="Inisial (YAS)" value={form.initials} onChange={(e) => update("initials", e.target.value.toUpperCase())} className="border border-line rounded px-2.5 py-1.5 text-sm uppercase" />
       <input required placeholder="Username" value={form.username} onChange={(e) => update("username", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm" />
-      <input required type="password" minLength={8} placeholder="Kata sandi" value={form.password} onChange={(e) => update("password", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm" />
+      <input required type="email" placeholder="Email" value={form.email} onChange={(e) => update("email", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm sm:col-span-2" />
+      <input required type="password" minLength={8} placeholder="Kata sandi" value={form.password} onChange={(e) => update("password", e.target.value)} className="border border-line rounded px-2.5 py-1.5 text-sm sm:col-span-2" />
       <div className="flex items-center gap-3 sm:col-span-2">
         <button type="submit" disabled={loading} className="bg-navy text-paper text-sm px-4 py-1.5 rounded hover:bg-navy-light disabled:opacity-60">
           {loading ? "Menyimpan..." : "Tambah petugas"}
@@ -458,13 +459,43 @@ function AddPetugasForm({ onDone }: { onDone: () => void }) {
 
 
 function ChangePasswordForm({ onDone }: { onDone: () => void }) {
-  const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "", otp: "" });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // otpSent: sudah pernah minta kode & kode sedang berlaku (belum tentu
+  // sudah dimasukkan). emailHint: sebagian email yang disamarkan, dari
+  // response /api/admin/otp/request, cuma buat konfirmasi visual.
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [emailHint, setEmailHint] = useState<string | null>(null);
+
   function update<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handleRequestOtp() {
+    setError(null);
+    setOtpLoading(true);
+    try {
+      const res = await fetch("/api/admin/otp/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ purpose: "change_password" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Gagal mengirim kode verifikasi.");
+        return;
+      }
+      setOtpSent(true);
+      setEmailHint(data.emailHint ?? null);
+    } catch {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setOtpLoading(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -484,6 +515,7 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
         body: JSON.stringify({
           currentPassword: form.currentPassword,
           newPassword: form.newPassword,
+          otp: form.otp,
         }),
       });
       const data = await res.json();
@@ -492,7 +524,9 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
         return;
       }
       setSuccess(true);
-      setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setForm({ currentPassword: "", newPassword: "", confirmPassword: "", otp: "" });
+      setOtpSent(false);
+      setEmailHint(null);
     } catch {
       setError("Tidak bisa terhubung ke server.");
     } finally {
@@ -528,10 +562,54 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
         onChange={(e) => update("confirmPassword", e.target.value)}
         className="border border-line rounded px-2.5 py-1.5 text-sm"
       />
+
+      <div className="rounded border border-dashed border-line bg-paper/40 p-3">
+        {!otpSent ? (
+          <>
+            <p className="mb-2 text-xs text-ink/60">
+              Butuh kode verifikasi dari email sebelum kata sandi bisa diganti.
+            </p>
+            <button
+              type="button"
+              onClick={handleRequestOtp}
+              disabled={otpLoading}
+              className="rounded border border-navy px-3 py-1.5 text-sm text-navy hover:bg-navy/5 disabled:opacity-60"
+            >
+              {otpLoading ? "Mengirim..." : "Kirim kode ke email"}
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="mb-2 text-xs text-moss">
+              Kode terkirim ke {emailHint ?? "email terdaftar"}. Berlaku 10 menit.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                required
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="Kode 6 digit"
+                value={form.otp}
+                onChange={(e) => update("otp", e.target.value.replace(/\D/g, ""))}
+                className="w-32 border border-line rounded px-2.5 py-1.5 text-sm tracking-widest"
+              />
+              <button
+                type="button"
+                onClick={handleRequestOtp}
+                disabled={otpLoading}
+                className="text-xs text-ink/50 underline hover:text-ink"
+              >
+                {otpLoading ? "Mengirim..." : "Kirim ulang kode"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !otpSent}
           className="bg-navy text-paper text-sm px-4 py-1.5 rounded hover:bg-navy-light disabled:opacity-60"
         >
           {loading ? "Menyimpan..." : "Simpan"}

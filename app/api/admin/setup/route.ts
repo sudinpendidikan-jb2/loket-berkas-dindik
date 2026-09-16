@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ensureSchema, countAdmins, createAdmin } from "@/lib/db";
 import { hashPassword, createSessionToken } from "@/lib/auth";
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export async function POST(req: NextRequest) {
   try {
     await ensureSchema();
@@ -16,8 +18,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { username, password, nama, initials } = await req.json();
-    if (!username || !password || !nama || !initials) {
+    const { username, password, nama, initials, email } = await req.json();
+    if (!username || !password || !nama || !initials || !email) {
       return NextResponse.json({ error: "Semua kolom wajib diisi." }, { status: 400 });
     }
     if (String(password).length < 8) {
@@ -29,11 +31,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Salah satu kolom terlalu panjang." }, { status: 400 });
     }
 
+    const emailNorm = String(email).trim().toLowerCase();
+    if (!EMAIL_PATTERN.test(emailNorm) || emailNorm.length > 200) {
+      return NextResponse.json({ error: "Format email tidak valid." }, { status: 400 });
+    }
+
     const admin = await createAdmin({
       username: String(username).trim().toLowerCase(),
       password_hash: hashPassword(password),
       nama: String(nama).trim(),
       initials: String(initials).trim().toUpperCase().slice(0, 4),
+      email: emailNorm,
     });
 
     const token = createSessionToken({

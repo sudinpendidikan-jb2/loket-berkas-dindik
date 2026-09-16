@@ -154,7 +154,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
 }
 
 function SetupForm({ onSuccess }: { onSuccess: () => void }) {
-  const [form, setForm] = useState({ nama: "", initials: "", username: "", password: "" });
+  const [form, setForm] = useState({ nama: "", initials: "", username: "", password: "", email: "" });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -228,6 +228,21 @@ function SetupForm({ onSuccess }: { onSuccess: () => void }) {
             onChange={(e) => update("username", e.target.value)}
             className="admin-input"
           />
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-sm text-ink/70">Email</span>
+          <input
+            required
+            type="email"
+            value={form.email}
+            onChange={(e) => update("email", e.target.value)}
+            className="admin-input"
+            placeholder="nama@contoh.com"
+          />
+          <span className="mt-1 block text-xs text-ink/50">
+            Dipakai untuk kirim kode verifikasi saat ganti kata sandi.
+          </span>
         </label>
 
         <label className="block">

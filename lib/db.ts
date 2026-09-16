@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { createHash } from "crypto";
 
 // DATABASE_URL berasal dari Supabase: Project Settings -> Database -> Connection string
 // (pakai versi "Connection pooling" / Transaction mode untuk environment serverless seperti Vercel).
@@ -31,6 +32,7 @@ export interface Admin {
   password_hash: string;
   nama: string;
   initials: string;
+  email: string;
   created_at: string;
 }
 
@@ -89,6 +91,28 @@ async function runEnsureSchema() {
       password_hash TEXT NOT NULL,
       nama TEXT NOT NULL,
       initials TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `;
+
+  // Email dipakai untuk mengirim kode OTP (mis. sebelum ganti kata sandi).
+  // Nullable di level kolom supaya tidak merusak baris admin lama yang
+  // dibuat sebelum kolom ini ada - tapi endpoint setup/register SEKARANG
+  // mewajibkan email diisi untuk akun BARU. Admin lama yang belum punya
+  // email perlu diisi manual sekali lewat query database:
+  //   UPDATE admins SET email = 'nama@contoh.com' WHERE username = '...';
+  await sql`ALTER TABLE admins ADD COLUMN IF NOT EXISTS email TEXT;`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS admins_email_unique ON admins (email) WHERE email IS NOT NULL;`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS otp_codes (
+      id SERIAL PRIMARY KEY,
+      admin_id INT NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+      purpose TEXT NOT NULL,
+      code_hash TEXT NOT NULL,
+      attempts INT NOT NULL DEFAULT 0,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
@@ -180,10 +204,11 @@ export async function createAdmin(input: {
   password_hash: string;
   nama: string;
   initials: string;
+  email: string;
 }): Promise<Admin> {
   const rows = await sql`
-    INSERT INTO admins (username, password_hash, nama, initials)
-    VALUES (${input.username}, ${input.password_hash}, ${input.nama}, ${input.initials})
+    INSERT INTO admins (username, password_hash, nama, initials, email)
+    VALUES (${input.username}, ${input.password_hash}, ${input.nama}, ${input.initials}, ${input.email})
     RETURNING *;
   `;
   return rows[0] as unknown as Admin;
@@ -196,4 +221,76 @@ export async function createAdmin(input: {
  */
 export async function updateAdminPassword(username: string, passwordHash: string): Promise<void> {
   await sql`UPDATE admins SET password_hash = ${passwordHash} WHERE username = ${username};`;
+}
+
+// ===== Kode OTP email (WSTG-ATHN-08 - proteksi tambahan untuk ganti password) =====
+
+const OTP_TTL_MS = 10 * 60 * 1000; // kode berlaku 10 menit
+const OTP_MAX_ATTEMPTS = 5; // maksimal 5x salah tebak per kode
+
+/**
+ * Membuat kode OTP 6 digit baru untuk satu admin + tujuan (purpose) tertentu
+ * (mis. "change_password"). Kode OTP lama milik admin+purpose yang sama
+ * otomatis dianggap tidak berlaku lagi, supaya cuma kode PALING BARU yang
+ * aktif.
+ *
+ * Yang disimpan ke database HANYA hash-nya (SHA-256, dicampur dengan
+ * admin_id+purpose supaya hash terikat konteksnya) - kode mentahnya
+ * dikembalikan sekali di sini untuk dikirim lewat email.
+ */
+export async function createOtpCode(adminId: number, purpose: string): Promise<string> {
+  const code = String(Math.floor(100000 + Math.random() * 900000)); // 6 digit: 100000-999999
+  const codeHash = createHash("sha256").update(`${adminId}:${purpose}:${code}`).digest("hex");
+  const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
+
+  await sql.begin(async (tx) => {
+    await tx`
+      DELETE FROM otp_codes
+      WHERE admin_id = ${adminId} AND purpose = ${purpose} AND used_at IS NULL;
+    `;
+    await tx`
+      INSERT INTO otp_codes (admin_id, purpose, code_hash, expires_at)
+      VALUES (${adminId}, ${purpose}, ${codeHash}, ${expiresAt}::timestamptz);
+    `;
+  });
+
+  return code;
+}
+
+export type OtpVerifyResult = "ok" | "invalid" | "expired_or_used" | "too_many_attempts";
+
+/**
+ * Memverifikasi kode OTP yang dimasukkan user. Kalau kodenya BENAR, langsung
+ * ditandai used_at (satu kode cuma bisa sukses dipakai sekali). Kalau SALAH,
+ * attempts bertambah - setelah OTP_MAX_ATTEMPTS kali salah, kode itu
+ * dianggap habis (harus minta kode baru), supaya tidak bisa ditebak dengan
+ * mencoba semua 900.000 kemungkinan 6 digit.
+ */
+export async function verifyOtpCode(
+  adminId: number,
+  purpose: string,
+  rawCode: string
+): Promise<OtpVerifyResult> {
+  const codeHash = createHash("sha256").update(`${adminId}:${purpose}:${rawCode}`).digest("hex");
+
+  return sql.begin(async (tx) => {
+    const rows = await tx`
+      SELECT id, code_hash, attempts FROM otp_codes
+      WHERE admin_id = ${adminId} AND purpose = ${purpose} AND used_at IS NULL AND expires_at > now()
+      ORDER BY created_at DESC
+      LIMIT 1
+      FOR UPDATE;
+    `;
+    const row = rows[0];
+    if (!row) return "expired_or_used";
+    if (row.attempts >= OTP_MAX_ATTEMPTS) return "too_many_attempts";
+
+    if (row.code_hash !== codeHash) {
+      await tx`UPDATE otp_codes SET attempts = attempts + 1 WHERE id = ${row.id};`;
+      return "invalid";
+    }
+
+    await tx`UPDATE otp_codes SET used_at = now() WHERE id = ${row.id};`;
+    return "ok";
+  });
 }
