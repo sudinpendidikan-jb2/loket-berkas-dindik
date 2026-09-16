@@ -20,10 +20,29 @@ const nextConfig = {
           // Paksa browser selalu pakai HTTPS untuk domain ini ke depannya.
           // Aman diaktifkan karena Vercel selalu serve lewat HTTPS.
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-          // Content-Security-Policy TIDAK dipasang statis di sini lagi -
-          // sekarang dibuat per-request dengan nonce acak di middleware.ts
-          // (WSTG-CONF-11), supaya script-src/style-src tidak perlu
-          // 'unsafe-inline'. Lihat komentar di middleware.ts.
+          // Content-Security-Policy: hanya izinkan resource dari domain sendiri.
+          // 'unsafe-inline' pada script-src & style-src DIPERLUKAN karena
+          // Next.js App Router (skrip hydration) dan styled-jsx (dipakai di
+          // beberapa halaman lewat <style jsx global>) sama-sama menyuntik
+          // tag inline. Sempat dicoba diganti nonce per-request lewat
+          // middleware (lebih ketat, tanpa unsafe-inline) tapi itu membuat
+          // hydration Next patah di production (lihat catatan di
+          // middleware.ts) - jadi dikembalikan ke versi ini yang terbukti
+          // stabil. Trade-off: proteksi CSP terhadap XSS jadi lebih longgar.
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data:",
+              "font-src 'self'",
+              "connect-src 'self'",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join("; "),
+          },
         ],
       },
     ];
