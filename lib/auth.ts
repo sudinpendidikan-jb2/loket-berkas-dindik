@@ -1,5 +1,6 @@
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
+import { createHmac, randomBytes, scryptSync, timingSafeEqual, createHash } from "crypto";
 import { cookies } from "next/headers";
+import { createSessionRecord, isSessionRevoked, deleteSessionRecord, deleteAllSessionsForUser } from "@/lib/db";
 
 // Batas panjang kata sandi - dipakai bersama oleh /api/admin/login,
 // /api/admin/change-password, dll, supaya aturannya konsisten di satu
@@ -67,7 +68,36 @@ export function createSessionToken(payload: SessionPayload): string {
   return `${body}.${sig}`;
 }
 
-export function verifySessionToken(token: string | undefined | null): SessionPayload | null {
+function tokenHash(token: string): string {
+  // Simpan HASH token di DB, bukan token mentahnya - kalau baris tabel
+  // sessions ini bocor (mis. lewat backup DB), penyerang tetap tidak bisa
+  // memakainya langsung sebagai cookie sesi.
+  return createHash("sha256").update(token).digest("hex");
+}
+
+/**
+ * Terbitkan sesi baru: buat token bertanda tangan HMAC seperti sebelumnya,
+ * DAN catat hash-nya di tabel sessions supaya bisa dicabut lewat logout /
+ * ganti password (WSTG-SESS-06). Dipanggil dari login, setup, dan register.
+ */
+export async function issueSession(payload: SessionPayload): Promise<string> {
+  const token = createSessionToken(payload);
+  await createSessionRecord(tokenHash(token), payload.username, new Date(payload.exp));
+  return token;
+}
+
+/** Cabut satu sesi (dipakai oleh /api/admin/logout). */
+export async function revokeSession(token: string | undefined | null): Promise<void> {
+  if (!token) return;
+  await deleteSessionRecord(tokenHash(token));
+}
+
+/** Cabut semua sesi milik satu akun (dipakai setelah ganti password). */
+export async function revokeAllSessions(username: string): Promise<void> {
+  await deleteAllSessionsForUser(username);
+}
+
+export async function verifySessionToken(token: string | undefined | null): Promise<SessionPayload | null> {
   if (!token) return null;
   const [body, sig] = token.split(".");
   if (!body || !sig) return null;
@@ -78,15 +108,22 @@ export function verifySessionToken(token: string | undefined | null): SessionPay
   const expBuf = Buffer.from(expected);
   if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) return null;
 
+  let payload: SessionPayload;
   try {
-    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as SessionPayload;
+    payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as SessionPayload;
     if (!payload.exp || payload.exp < Date.now()) return null;
-    return payload;
   } catch {
     return null;
   }
+
+  // Tanda tangan valid & belum kedaluwarsa secara waktu, tapi tetap cek ke
+  // DB: kalau baris sesinya sudah dihapus (logout / ganti password / dicabut
+  // manual), tolak walau HMAC-nya cocok. Ini yang menutup WSTG-SESS-06.
+  if (await isSessionRevoked(tokenHash(token))) return null;
+
+  return payload;
 }
 
-export function getSession(): SessionPayload | null {
+export async function getSession(): Promise<SessionPayload | null> {
   return verifySessionToken(cookies().get("admin_session")?.value);
 }

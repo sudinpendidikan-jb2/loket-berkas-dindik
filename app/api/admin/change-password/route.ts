@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureSchema, getAdminByUsername, updateAdminPassword } from "@/lib/db";
-import { getSession, verifyPassword, hashPassword, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@/lib/auth";
+import { getSession, verifyPassword, hashPassword, issueSession, revokeAllSessions, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 
 // WSTG-ATHN-08: sebelumnya tidak ada cara bagi petugas untuk mengganti kata
@@ -14,7 +14,7 @@ const ATTEMPT_LIMIT = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
-  const session = getSession();
+  const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401 });
   }
@@ -52,7 +52,29 @@ export async function POST(req: NextRequest) {
 
     await updateAdminPassword(admin.username, hashPassword(newPassword));
 
-    return NextResponse.json({ ok: true });
+    // WSTG-SESS-06: begitu kata sandi diganti, anggap semua sesi lama
+    // (termasuk yang mungkin bocor) tidak lagi dipercaya - paksa login ulang
+    // di semua perangkat lain. Device yang sedang dipakai untuk mengganti
+    // password ini sendiri diberi sesi baru di bawah, supaya tidak ikut
+    // ter-logout dari aksinya sendiri.
+    await revokeAllSessions(admin.username);
+
+    const token = await issueSession({
+      username: admin.username,
+      name: admin.nama,
+      initials: admin.initials,
+      exp: Date.now() + 1000 * 60 * 60 * 8,
+    });
+
+    const res = NextResponse.json({ ok: true });
+    res.cookies.set("admin_session", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 8,
+    });
+    return res;
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "Gagal mengganti kata sandi." }, { status: 500 });

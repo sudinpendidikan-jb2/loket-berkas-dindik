@@ -44,9 +44,29 @@ export function rateLimit(
 }
 
 export function getClientIp(req: Request): string {
+  // PENTING (WSTG-ATHN-03): jangan ambil segmen PERTAMA dari X-Forwarded-For.
+  // Header itu berbentuk "client, proxy1, proxy2, ..." dan client BEBAS
+  // mengirim nilai awal apa saja (mis. IP acak baru di setiap request) untuk
+  // membuat rate limiter mengira tiap request datang dari IP berbeda ->
+  // bypass limit sepenuhnya.
+  //
+  // Di Vercel, header `x-vercel-forwarded-for` diisi ulang oleh edge network
+  // Vercel sendiri dan TIDAK BISA dipalsukan oleh client (header masuk dengan
+  // nama itu dari luar akan ditimpa) - jadi ini sumber IP paling bisa
+  // dipercaya. Kalau tidak ada (mis. jalan di luar Vercel / saat dev lokal),
+  // baru turun ke X-Forwarded-For, dan ambil segmen TERAKHIR (ditambahkan
+  // oleh proxy tepercaya terdekat), bukan yang pertama.
+  const vercelIp = req.headers.get("x-vercel-forwarded-for");
+  if (vercelIp) return vercelIp.split(",")[0].trim();
+
   const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
+  if (forwarded) {
+    const parts = forwarded.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1];
+  }
+
   const realIp = req.headers.get("x-real-ip");
   if (realIp) return realIp;
+
   return "unknown";
 }

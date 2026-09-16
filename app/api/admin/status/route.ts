@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureSchema, countAdmins } from "@/lib/db";
+import { getClientIp } from "@/lib/rate-limit";
 
 // Rate limit sederhana in-memory per IP.
 // Catatan: state ini per-instance serverless (reset saat cold start / di-scale
@@ -10,12 +11,6 @@ const RATE_LIMIT = 5; // maksimal request
 const WINDOW_MS = 60_000; // per 1 menit
 
 const hits = new Map<string, { count: number; resetAt: number }>();
-
-function getClientIp(req: NextRequest): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? "unknown";
-}
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();

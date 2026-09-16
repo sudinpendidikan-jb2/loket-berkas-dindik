@@ -21,7 +21,7 @@ function csvEscape(value: string) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!getSession()) {
+  if (!(await getSession())) {
     return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401, headers: NO_STORE_HEADERS });
   }
 

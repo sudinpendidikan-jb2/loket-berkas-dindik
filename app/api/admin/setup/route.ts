@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureSchema, countAdmins, createAdmin } from "@/lib/db";
-import { hashPassword, createSessionToken } from "@/lib/auth";
+import { hashPassword, issueSession } from "@/lib/auth";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       email: emailNorm,
     });
 
-    const token = createSessionToken({
+    const token = await issueSession({
       username: admin.username,
       name: admin.nama,
       initials: admin.initials,

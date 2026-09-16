@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { NO_STORE_HEADERS } from "@/lib/http";
 
 export async function GET() {
-  const session = getSession();
+  const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401, headers: NO_STORE_HEADERS });
   }

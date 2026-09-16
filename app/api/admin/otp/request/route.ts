@@ -15,7 +15,7 @@ const OTP_REQUEST_LIMIT = 3;
 const OTP_REQUEST_WINDOW_MS = 10 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
-  const session = getSession();
+  const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401 });
   }

@@ -85,6 +85,16 @@ export async function POST(req: NextRequest) {
             { status: 400 }
           );
         }
+        // WSTG-INPV-01: field ini sebelumnya cuma dicek "tidak kosong",
+        // tidak ada batas atas panjang seperti field wajib lain di atas -
+        // jadi bisa dikirim string raksasa lewat panggilan API langsung
+        // (di luar form) tanpa ditolak.
+        if (String(body[field]).length > MAX_FIELD_LENGTH) {
+          return NextResponse.json(
+            { error: `Kolom "${field}" terlalu panjang.` },
+            { status: 400 }
+          );
+        }
       }
     }
 
@@ -110,7 +120,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!getSession()) {
+  if (!(await getSession())) {
     return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401, headers: NO_STORE_HEADERS });
   }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminByUsername } from "@/lib/db";
-import { verifyPassword, createSessionToken } from "@/lib/auth";
+import { verifyPassword, issueSession } from "@/lib/auth";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 // Maksimal 5 percobaan login per IP setiap 10 menit, untuk memperlambat
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Username atau kata sandi salah." }, { status: 401 });
     }
 
-    const token = createSessionToken({
+    const token = await issueSession({
       username: admin.username,
       name: admin.nama,
       initials: admin.initials,

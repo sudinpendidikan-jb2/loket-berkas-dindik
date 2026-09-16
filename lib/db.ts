@@ -116,6 +116,50 @@ async function runEnsureSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `;
+
+  // WSTG-SESS-06: sesi sebelumnya cuma token HMAC stateless (tidak tercatat
+  // di server), jadi logout hanya menghapus cookie di browser -- token yang
+  // sudah beredar (dicuri, atau device lupa logout) tetap SAH sampai
+  // kedaluwarsa 8 jam kemudian, tidak ada cara mencabutnya paksa. Tabel ini
+  // menyimpan HASH dari setiap sesi yang diterbitkan; getSession() sekarang
+  // mengecek keberadaan barisnya di sini juga (bukan cuma tanda tangan HMAC).
+  // Logout / ganti password menghapus baris terkait -> sesi lama langsung
+  // mati walau token fisiknya belum kedaluwarsa.
+  await sql`
+    CREATE TABLE IF NOT EXISTS sessions (
+      token_hash TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `;
+}
+
+export async function createSessionRecord(tokenHash: string, username: string, expiresAt: Date): Promise<void> {
+  await sql`
+    INSERT INTO sessions (token_hash, username, expires_at)
+    VALUES (${tokenHash}, ${username}, ${expiresAt.toISOString()}::timestamptz)
+    ON CONFLICT (token_hash) DO NOTHING;
+  `;
+  // Bersihkan sesi kedaluwarsa milik user ini sekalian, biar tabel tidak
+  // membengkak tanpa perlu cron job terpisah.
+  await sql`DELETE FROM sessions WHERE username = ${username} AND expires_at <= now();`;
+}
+
+export async function isSessionRevoked(tokenHash: string): Promise<boolean> {
+  const rows = await sql`
+    SELECT 1 FROM sessions WHERE token_hash = ${tokenHash} AND expires_at > now();
+  `;
+  return rows.length === 0;
+}
+
+export async function deleteSessionRecord(tokenHash: string): Promise<void> {
+  await sql`DELETE FROM sessions WHERE token_hash = ${tokenHash};`;
+}
+
+/** Cabut SEMUA sesi aktif milik satu username sekaligus (dipakai saat ganti password). */
+export async function deleteAllSessionsForUser(username: string): Promise<void> {
+  await sql`DELETE FROM sessions WHERE username = ${username};`;
 }
 
 export async function insertGuest(input: {
